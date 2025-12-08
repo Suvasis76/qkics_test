@@ -1,47 +1,34 @@
 // src/components/auth/Login.jsx
 import { useState } from "react";
-import axiosSecure from "../utils/axiosSecure";
-import { API_BASE_URL } from "../../config/api";
-
+import { useDispatch } from "react-redux";
+import { loginUser, fetchUserProfile } from "../../redux/slices/userSlice";
 import { useAlert } from "../../context/AlertContext";
 
-function LoginModal({ onClose, onLogin, openSignup, isDark }) {
+function LoginModal({ onClose, openSignup, isDark }) {
+  const dispatch = useDispatch();
   const { showAlert } = useAlert();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const bg = isDark ? "bg-neutral-800 text-white" : "bg-white text-black";
 
-  const handleUsernameChange = (value) => {
-    value = value.toLowerCase();
-    if (!/^[a-z0-9]*$/.test(value)) return;
-    setUsername(value);
-  };
-
   const handleLogin = async () => {
     try {
-      const payload = { username, password };
+      const result = await dispatch(loginUser({ username, password }));
 
-      const res = await axiosSecure.post(
-        `v1/auth/login/`,
-        payload,
-        {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true // backend sets refresh HttpOnly cookie
-        }
-      );
+      if (loginUser.rejected.match(result)) {
+        showAlert("Invalid username or password", "error");
+        return;
+      }
 
+      await dispatch(fetchUserProfile());
+      showAlert("Login successful!", "success");
 
-      // store ONLY access + user
-      localStorage.setItem("access", res.data.access);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      onLogin(username);
       onClose();
-      window.location.reload();
-    } catch (error) {
-      console.log("Login error:", error.response?.data);
-      showAlert("Invalid username or password", "error");
+    } catch (err) {
+      console.log(err);
+      showAlert("Login failed", "error");
     }
   };
 
@@ -56,9 +43,10 @@ function LoginModal({ onClose, onLogin, openSignup, isDark }) {
         type="text"
         placeholder="Username"
         value={username}
-        onChange={(e) => handleUsernameChange(e.target.value)}
-        className={`w-full px-3 py-2 rounded border mb-3 ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-          }`}
+        onChange={(e) => setUsername(e.target.value)}   // ❌ removed lowercase
+        className={`w-full px-3 py-2 rounded border mb-3 ${
+          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+        }`}
       />
 
       <input
@@ -66,8 +54,9 @@ function LoginModal({ onClose, onLogin, openSignup, isDark }) {
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-          }`}
+        className={`w-full px-3 py-2 rounded border ${
+          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+        }`}
       />
 
       <button

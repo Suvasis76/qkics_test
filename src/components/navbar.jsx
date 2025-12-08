@@ -1,12 +1,12 @@
+// src/components/navbar.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { FaRegUserCircle } from "react-icons/fa";
+import { FaUser, FaKey, FaSignOutAlt } from "react-icons/fa";
 
 import LoginModal from "./auth/login";
 import SignupModal from "./auth/register";
 import ChangePasswordModal from "./auth/change_password";
-import { FaUser, FaKey, FaSignOutAlt } from "react-icons/fa";
 
 import {
   faHouse,
@@ -15,26 +15,39 @@ import {
   faMoon,
 } from "@fortawesome/free-solid-svg-icons";
 
-function Navbar({
-  theme,
-  onToggleTheme,
-  loggedIn,
-  onLogin,
-  onRegister,
-  onSearch,          // <-- added (DO NOT REMOVE)
-}) {
+function Navbar({ theme, onToggleTheme, user, onSearch }) {
   const isDark = theme === "dark";
 
   const [dropdown, setDropdown] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showChangePass, setShowChangePass] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState(""); // <-- added for live search
+  const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
-
   const toggleDropdown = () => setDropdown((v) => !v);
+
+  const isLoggedIn = !!user;
+
+  /* -------------------------
+     PROFILE REDIRECT LOGIC
+  -------------------------- */
+  const goToProfile = () => {
+    setDropdown(false);
+
+    if (!user) {
+      navigate("/profile");
+      return;
+    }
+
+    if (user.user_type === "expert") {
+      navigate("/expert");
+    } else if (user.user_type === "entrepreneur") {
+      navigate("/entrepreneur");
+    } else {
+      navigate("/profile");
+    }
+  };
 
   return (
     <>
@@ -47,14 +60,12 @@ function Navbar({
         }`}
       >
         <div className="max-w-6xl mx-auto pr-4 h-14 flex items-center gap-4 relative">
-
+          
           {/* LOGO */}
           <div className="flex items-center gap-2 mr-2">
-            <div className="inline-flex h-40 w-20 items-center justify-center rounded text-sm font-semibold">
-              <Link to="/">
-                <img className="rounded" src="logo.png" alt="logo" width="40" />
-              </Link>
-            </div>
+            <Link to="/">
+              <img className="rounded" src="/logo.png" alt="logo" width="40" />
+            </Link>
           </div>
 
           {/* NAV ICONS */}
@@ -101,7 +112,7 @@ function Navbar({
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    onSearch(e.target.value);  // <-- LIVE SEARCH
+                    onSearch(e.target.value);
                   }}
                   placeholder="Search posts..."
                   className="bg-transparent outline-none w-full text-xs placeholder:text-neutral-400"
@@ -113,13 +124,13 @@ function Navbar({
           {/* RIGHT SECTION */}
           <div className="flex items-center gap-3 text-xs">
 
-            {/* ADD QUESTION */}
-            <button className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 font-semibold">
+            {/* Try Q-KICS */}
+            <button className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 font-semibold">
               Try Q-KICS +
             </button>
 
-            {/* IF LOGGED OUT */}
-            {!loggedIn && (
+            {/* Logged OUT */}
+            {!isLoggedIn && (
               <>
                 <button
                   onClick={() => setShowLogin(true)}
@@ -145,33 +156,28 @@ function Navbar({
               </>
             )}
 
-            {/* IF LOGGED IN */}
-            {loggedIn && (
+            {/* Logged IN */}
+            {isLoggedIn && (
               <div className="relative">
                 <button
                   onClick={toggleDropdown}
-                  className={`h-8 w-8 rounded-full flex items-center justify-center font-semibold ${
+                  className={`h-8 w-8 rounded-full flex items-center justify-center ${
                     isDark
                       ? "bg-neutral-800 hover:bg-neutral-700 text-white"
                       : "bg-neutral-200 hover:bg-neutral-300 text-black"
                   }`}
                 >
                   <img
-  src={
-    JSON.parse(localStorage.getItem("user"))?.profile_picture
-      ? JSON.parse(localStorage.getItem("user")).profile_picture
-      : JSON.parse(localStorage.getItem("user"))?.first_name
-        ? `https://ui-avatars.com/api/?name=${
-            JSON.parse(localStorage.getItem("user")).first_name
-          }&background=random&length=1`
-        : `https://ui-avatars.com/api/?name=${
-            JSON.parse(localStorage.getItem("user")).username
-          }&background=random&length=1`
-  }
-  alt="profile"
-  className="rounded-full object-cover h-8 w-8"
-/>
-
+                    src={
+                      user?.profile_picture
+                        ? `${user.profile_picture}?t=${Date.now()}`
+                        : `https://ui-avatars.com/api/?name=${
+                            user?.first_name || user?.username
+                          }&background=random&length=1`
+                    }
+                    alt="profile"
+                    className="rounded-full object-cover h-8 w-8"
+                  />
                 </button>
 
                 {dropdown && (
@@ -185,28 +191,7 @@ function Navbar({
                     {/* PROFILE */}
                     <button
                       className="w-full flex items-center gap-2 px-4 py-2 hover:bg-neutral-700/20 rounded-xl"
-                      onClick={() => {
-                        setDropdown(false);
-
-                        const user = JSON.parse(localStorage.getItem("user"));
-
-                        if (!user || !user.is_verified) {
-                          navigate("/profile");
-                          return;
-                        }
-
-                        if (user.user_type === "entrepreneur") {
-                          navigate("/entrepreneur");
-                          return;
-                        }
-
-                        if (user.user_type === "expert") {
-                          navigate("/expert");
-                          return;
-                        }
-
-                        navigate("/profile");
-                      }}
+                      onClick={goToProfile}
                     >
                       <FaUser /> My Profile
                     </button>
@@ -255,40 +240,18 @@ function Navbar({
       {/* LOGIN MODAL */}
       {showLogin && (
         <ModalOverlay close={() => setShowLogin(false)}>
-          <LoginModal
-            isDark={isDark}
-            onClose={() => setShowLogin(false)}
-            onLogin={(email) => {
-              onLogin(email);
-              setShowLogin(false);
-            }}
-            openSignup={() => {
-              setShowLogin(false);
-              setShowSignup(true);
-            }}
-          />
+          <LoginModal isDark={isDark} onClose={() => setShowLogin(false)} />
         </ModalOverlay>
       )}
 
       {/* SIGNUP MODAL */}
       {showSignup && (
         <ModalOverlay close={() => setShowSignup(false)}>
-          <SignupModal
-            isDark={isDark}
-            onRegister={(email) => {
-              onRegister(email);
-              setShowSignup(false);
-            }}
-            onClose={() => setShowSignup(false)}
-            openLogin={() => {
-              setShowSignup(false);
-              setShowLogin(true);
-            }}
-          />
+          <SignupModal isDark={isDark} onClose={() => setShowSignup(false)} />
         </ModalOverlay>
       )}
 
-      {/* CHANGE PASSWORD MODAL */}
+      {/* CHANGE PASSWORD */}
       {showChangePass && (
         <ModalOverlay close={() => setShowChangePass(false)}>
           <ChangePasswordModal
@@ -303,9 +266,9 @@ function Navbar({
 
 export default Navbar;
 
-/* -----------------------
+/* -------------------------------------
    MODAL BACKDROP
-------------------------- */
+--------------------------------------- */
 function ModalOverlay({ children, close }) {
   return (
     <div

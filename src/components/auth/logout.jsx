@@ -1,10 +1,16 @@
+// src/components/auth/logout.jsx
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosSecure from "../utils/axiosSecure";
-import { API_BASE_URL } from "../../config/api";
+import { useAlert } from "../../context/AlertContext";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "../../redux/slices/userSlice";
+import { setAccessToken } from "../../redux/store/tokenManager";
 
-function Logout({ onLogout }) {
+function Logout() {
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
+  const dispatch = useDispatch();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -19,18 +25,21 @@ function Logout({ onLogout }) {
           { withCredentials: true }
         );
 
-        if (onLogout) onLogout();
+        // 🔥 Clear Redux user state
+        dispatch(logoutUser());
 
-        localStorage.clear();
+        // 🔥 Clear local storage
+        setAccessToken(null);
 
-        navigate("/"); // redirect to home
+        showAlert("Logged out successfully.", "success");
+        navigate("/");
       } catch (error) {
         console.log("Logout error:", error.response?.data);
       }
     };
 
     doLogout();
-  }, [navigate, onLogout]);
+  }, [navigate, dispatch]);
 
   return null;
 }

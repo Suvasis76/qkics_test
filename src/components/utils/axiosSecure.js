@@ -1,12 +1,17 @@
+// src/components/utils/axiosSecure.js
 import axios from "axios";
 import { API_BASE_URL } from "../../config/api";
 import { navigateTo } from "./navigation";
+import { getAccessToken, setAccessToken } from "../../redux/store/tokenManager";
 
 const axiosSecure = axios.create({
-  baseURL: API_BASE_URL,  // MUST be "/api/"
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
+/* -------------------------------------------------------
+    GLOBAL REFRESH STATE
+------------------------------------------------------- */
 let isRefreshing = false;
 let queue = [];
 
@@ -18,64 +23,111 @@ const runQueue = (error, token) => {
   queue = [];
 };
 
-/* ------------------------------------------
+/* -------------------------------------------------------
     REQUEST INTERCEPTOR
-------------------------------------------- */
+------------------------------------------------------- */
 axiosSecure.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access");
-    if (token) {
+    const token = getAccessToken();
+
+    // Do NOT attach token if custom flag is set
+    if (token && !config._noAuth) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (err) => Promise.reject(err)
 );
 
-/* ------------------------------------------
+/* -------------------------------------------------------
     RESPONSE INTERCEPTOR + REFRESH LOGIC
-------------------------------------------- */
+------------------------------------------------------- */
 axiosSecure.interceptors.response.use(
   (res) => res,
   async (error) => {
+    if (!error.response) return Promise.reject(error);
+
     const original = error.config;
 
-    if (!error.response) return Promise.reject(error);
+    // If not 401 → normal error
     if (error.response.status !== 401) return Promise.reject(error);
-    if (original._retry) return Promise.reject(error);
 
+    // Avoid infinite loop
+    if (original._retry) return Promise.reject(error);
     original._retry = true;
 
-    // If already refreshing → queue request
+    /* ------------------------------
+        Already refreshing? Queue it.
+    ------------------------------ */
     if (isRefreshing) {
       try {
-        const token = await addToQueue();
-        original.headers.Authorization = `Bearer ${token}`;
+        const newToken = await addToQueue();
+
+        // Apply new token to queued request
+        if (!original.headers) original.headers = {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+
         return axiosSecure(original);
-      } catch (err) {
-        return Promise.reject(err);
+      } catch (e) {
+        return Promise.reject(e);
       }
     }
 
-    // Start refresh
+    /* ------------------------------
+        Start refresh process
+    ------------------------------ */
     isRefreshing = true;
 
     try {
-      const { data } = await axiosSecure.post("v1/auth/token/refresh/", {});
+      console.log("🔥 401 INTERCEPTOR TRIGGERED");
 
-      const newToken = data?.access;
-      if (!newToken) throw new Error("Refresh failed: no token");
+      const refreshResponse = await axiosSecure.post(
+        "/v1/auth/token/refresh/",
+        {},
+        { _noAuth: true } // prevents sending old token
+      );
 
-      localStorage.setItem("access", newToken);
+      console.log("🔥 REFRESH RESPONSE:", refreshResponse.data);
 
+      const newToken = refreshResponse?.data?.access;
+      console.log("🔥 NEW TOKEN FROM SERVER:", newToken);
+
+      if (!newToken) throw new Error("No new access token from refresh");
+
+      // Save token to memory
+      setAccessToken(newToken);
+      console.log("🔥 STORED TOKEN IN MEMORY:", getAccessToken());
+
+      // Resolve queued requests
       runQueue(null, newToken);
 
+      /* -------------------------------------------------
+          MOST IMPORTANT FIX 🔥🔥🔥
+          FORCE CLEAR OLD TOKENS AND APPLY NEW ONE
+      -------------------------------------------------- */
+      if (!original.headers) original.headers = {};
+
       original.headers.Authorization = `Bearer ${newToken}`;
+
+      // Remove outdated Axios header caches
+      if (original.headers.common?.Authorization)
+        delete original.headers.common.Authorization;
+
+      if (original.headers.get?.Authorization)
+        delete original.headers.get.Authorization;
+
+      if (original.headers.post?.Authorization)
+        delete original.headers.post.Authorization;
+
       return axiosSecure(original);
     } catch (refreshErr) {
-      localStorage.removeItem("access");
+      // Refresh failed → clear token + reject queue
+      setAccessToken(null);
       runQueue(refreshErr, null);
+
       navigateTo("/login");
+
       return Promise.reject(refreshErr);
     } finally {
       isRefreshing = false;

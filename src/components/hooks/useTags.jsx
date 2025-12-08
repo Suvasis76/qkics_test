@@ -1,6 +1,6 @@
-// src/components/posts/useTags.jsx
+// src/components/hooks/useTags.jsx
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axiosSecure from "../utils/axiosSecure";
 
 export default function useTags() {
   const [tags, setTags] = useState([]);
@@ -8,10 +8,15 @@ export default function useTags() {
 
   const fetchTags = async () => {
     try {
-      const res = await axios.get("/api/v1/community/tags/");
-      setTags(res.data);
+      // FIXED URL + using axiosSecure
+      const res = await axiosSecure.get("/v1/community/tags/");
+      
+      console.log("🔥 TAGS LOADED:", res.data);
+
+      setTags(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.log("Tag load error:", err);
+      setTags([]);
     } finally {
       setLoading(false);
     }

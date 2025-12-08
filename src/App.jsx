@@ -1,6 +1,10 @@
 // src/App.jsx
 import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useAlert } from "./context/AlertContext";
+
+import { fetchUserProfile } from "./redux/slices/userSlice";
 
 import Navbar from "./components/navbar";
 import Home from "./pages/home";
@@ -8,51 +12,25 @@ import Following from "./pages/following";
 import Space from "./pages/space";
 import Notification from "./pages/notification";
 import Logout from "./components/auth/logout";
-import checkAuth from "./components/utils/checkAuth";
-import Profile from "./profiles/normal_profile";
+import Profile from "./profiles/normalProfile";
 import EntrepreneurProfile from "./profiles/entrepreneur";
-import ExpertProfile from "./profiles/expert";
+import ExpertProfile from "./profiles/expertProfile";
 import Comments from "./components/posts/comment";
+import ExpertWizard from "./profiles/expertWizards/ExpertWizard";
+import EntrepreneurWizard from "./profiles/entreprenuerWizard/entreprenuerWizard";
 
 function App() {
-  /* -----------------------------------------
-      LOGIN STATE (Global)
-  ----------------------------------------- */
-  const [loggedIn, setLoggedIn] = useState(() => {
-    return !!localStorage.getItem("access");
-  });
-
-  const [userEmail, setUserEmail] = useState(() => {
-    const raw = localStorage.getItem("user");
-    try {
-      const user = JSON.parse(raw || "{}");
-      return user.username || "";
-    } catch {
-      return "";
-    }
-  });
-
-  const handleLogin = (email) => {
-    setLoggedIn(true);
-    setUserEmail(email);
-  };
-
-  const handleRegister = (email) => {
-    setLoggedIn(true);
-    setUserEmail(email);
-  };
-
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setUserEmail("");
-  };
+  const dispatch = useDispatch();
+  const { showAlert } = useAlert();
 
   /* -----------------------------------------
-      SECURITY CHECK
+      FETCH USER PROFILE ONCE (Redux)
   ----------------------------------------- */
+  const user = useSelector((state) => state.user.data);
+
   useEffect(() => {
-    checkAuth();
-  }, []);
+    dispatch(fetchUserProfile());
+  }, [dispatch]);
 
   /* -----------------------------------------
       THEME LOGIC
@@ -84,13 +62,24 @@ function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggleTheme = () =>
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
   /* -----------------------------------------
-      SEARCH STATE (IMPORTANT)
+      SEARCH STATE
   ----------------------------------------- */
   const [searchText, setSearchText] = useState("");
+
+  /* -----------------------------------------
+      ALERT AFTER LOGIN
+  ----------------------------------------- */
+  useEffect(() => {
+    const alertMessage = localStorage.getItem("pendingAlert");
+
+    if (alertMessage) {
+      showAlert(alertMessage, "success");
+      localStorage.removeItem("pendingAlert");
+    }
+  }, [showAlert]);
 
   /* -----------------------------------------
       RETURN UI
@@ -100,11 +89,8 @@ function App() {
       <Navbar
         theme={theme}
         onToggleTheme={toggleTheme}
-        loggedIn={loggedIn}
-        userEmail={userEmail}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        onSearch={(text) => setSearchText(text)}  // 🔥 FIX: PASS SEARCH FUNCTION
+        user={user}                // <-- Redux user
+        onSearch={(text) => setSearchText(text)}
       />
 
       <Routes>
@@ -113,21 +99,22 @@ function App() {
           element={
             <Home
               theme={theme}
-              loggedIn={loggedIn}
-              onLogin={handleLogin}
-              onRegister={handleRegister}
-              searchQuery={searchText}  // 🔥 PASS SEARCH TEXT TO FEED
+              searchQuery={searchText}
             />
           }
         />
+
         <Route path="/following" element={<Following theme={theme} />} />
         <Route path="/spaces" element={<Space theme={theme} />} />
         <Route path="/notifications" element={<Notification theme={theme} />} />
         <Route path="/profile" element={<Profile theme={theme} />} />
         <Route path="/entrepreneur" element={<EntrepreneurProfile theme={theme} />} />
+        <Route path="/upgrade/expert" element={<ExpertWizard theme={theme} />} />
         <Route path="/expert" element={<ExpertProfile theme={theme} />} />
+        <Route path="/upgrade/entrepreneur" element={<EntrepreneurWizard theme={theme} />} />
+
         <Route path="/post/:id/comments" element={<Comments theme={theme} />} />
-        <Route path="/logout" element={<Logout onLogout={handleLogout} />} />
+        <Route path="/logout" element={<Logout />} />
       </Routes>
     </>
   );

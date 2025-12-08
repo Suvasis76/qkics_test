@@ -12,14 +12,13 @@ export default function useSearchPosts() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("access_token");
+      const res = await axios.get(`${API_BASE_URL}v1/community/search/?q=${query}`);
 
-      const res = await axios.get(
-        `${API_BASE_URL}/community/search/?q=${query}`,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-      );
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
 
-      setResults(res.data);
+      setResults(data);
     } catch (err) {
       setError(err.response?.data || "Search failed");
     } finally {

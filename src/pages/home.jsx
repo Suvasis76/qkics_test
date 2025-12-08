@@ -3,6 +3,10 @@ import { BiLike, BiSolidLike } from "react-icons/bi";
 import { useNavigate } from "react-router-dom";
 import { FaPlus } from "react-icons/fa6";
 import { HiPencilAlt, HiTrash } from "react-icons/hi";
+
+import { useConfirm } from "../context/ConfirmContext";
+import { useAlert } from "../context/AlertContext";
+
 import axiosSecure from "../components/utils/axiosSecure";
 
 import useFeed from "../components/hooks/useFeed";
@@ -13,73 +17,98 @@ import CreatePostModal from "../components/posts/create_post";
 import LoginModal from "../components/auth/login";
 import SignupModal from "../components/auth/register";
 
+import { useSelector } from "react-redux";
+import { getAccessToken } from "../redux/store/tokenManager";
 
 function Home({ theme, searchQuery }) {
   const isDark = theme === "dark";
   const navigate = useNavigate();
 
+  const { showConfirm } = useConfirm();
+  const { showAlert } = useAlert();
+
+  const loggedUser = useSelector((state) => state.user.data);
+
+  // THEME COLORS
   const bg = isDark ? "bg-[#0f0f0f]" : "bg-[#f5f5f5]";
   const cardBg = isDark ? "bg-[#2c2c2c]" : "bg-white";
   const hoverBg = isDark ? "hover:bg-[#3a3a3a]" : "hover:bg-[#f0f0f0]";
   const text = isDark ? "text-[#eaeaea]" : "text-[#111111]";
   const borderColor = isDark ? "border-white/15" : "border-black/10";
 
+  // LOCAL STATES
   const [selectedTag, setSelectedTag] = useState(null);
-
-  // FEED WITH USER DATA — NOW WORKING
-  const { posts, setPosts, user } = useFeed(selectedTag, searchQuery);
-
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
-
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
-
   const [menuOpen, setMenuOpen] = useState(null);
-
-  // NEW STATE FOR SEE MORE FEATURE
   const [expandedPost, setExpandedPost] = useState(null);
 
-  const { handleLike } = useLike(setPosts, () => setShowLogin(true));
+  const accessToken = getAccessToken();
+
+  // HOOKS
+  const { posts, setPosts, loaderRef } = useFeed(selectedTag, searchQuery);
+
+  const { handleLike } = useLike(setPosts, () => getAccessToken(), () => setShowLogin(true));
   const { tags, loading: loadingTags } = useTags();
 
-  // Restore scroll after coming back from comments
+  // Restore scroll position
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("scrollY");
-
     if (savedScroll && posts.length > 0) {
       setTimeout(() => window.scrollTo(0, Number(savedScroll)), 50);
       sessionStorage.removeItem("scrollY");
     }
   }, [posts]);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // Time Ago
+  const timeAgo = (dateString) => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const seconds = Math.floor((now - past) / 1000);
+
+    const intervals = {
+      year: 31536000,
+      month: 2592000,
+      week: 604800,
+      day: 86400,
+      hour: 3600,
+      minute: 60,
+    };
+
+    for (let unit in intervals) {
+      const value = Math.floor(seconds / intervals[unit]);
+      if (value >= 1) return `${value} ${unit}${value > 1 ? "s" : ""} ago`;
+    }
+    return "Just now";
   };
 
   // DELETE POST
   const handleDelete = async (postId) => {
-    if (!window.confirm("Do you really want to delete this post?")) return;
-
-    try {
-      const res = await axiosSecure.delete(`/v1/community/posts/${postId}/`);
-
-      if (res.status === 204) {
-        setPosts(posts.filter((p) => p.id !== postId));
-      }
-    } catch (err) {
-      console.log("Delete error:", err);
-    }
+    showConfirm({
+      title: "Delete Post?",
+      message: "Are you sure you want to delete this post?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          const res = await axiosSecure.delete(`/v1/community/posts/${postId}/`);
+          if (res.status === 204) {
+            setPosts((prev) => prev.filter((p) => p.id !== postId));
+            showAlert("Post deleted successfully!", "success");
+          }
+        } catch {
+          showAlert("Delete failed!", "error");
+        }
+      },
+    });
   };
 
-  // OPEN EDIT MODAL
-  const openEditModal = (post) => {
-    setEditingPost(post);
-    setShowCreatePost(true);
-  };
-
+  useEffect(() => {
+  console.log("🔐 Current Token:", getAccessToken());
+}, []);
 
 
   return (
@@ -92,8 +121,7 @@ function Home({ theme, searchQuery }) {
 
             <button
               onClick={() => {
-                const token = localStorage.getItem("access");
-                if (!token) return setShowLogin(true);
+                if (!loggedUser) return setShowLogin(true);
                 setEditingPost(null);
                 setShowCreatePost(true);
               }}
@@ -105,7 +133,7 @@ function Home({ theme, searchQuery }) {
               <span className="font-semibold">Create Post</span>
             </button>
 
-            {/* TAG SIDEBAR */}
+            {/* TAG LIST */}
             <div className="mt-6 space-y-1">
               <div className="px-4 flex items-center justify-between mb-2">
                 <p className={`text-xs font-bold uppercase tracking-wider ${text}/60`}>
@@ -127,34 +155,37 @@ function Home({ theme, searchQuery }) {
                   <p className="px-4 py-2 text-xs opacity-70">Loading...</p>
                 ) : (
                   <>
-                    {(showAllTags ? tags : tags.slice(0, 8)).map((tag) => {
-                      const isActive = selectedTag === tag.slug;
-                      return (
-                        <button
-                          key={tag.id}
-                          onClick={() => setSelectedTag(tag.slug)}
-                          className={`w-full text-left px-4 py-2.5 rounded-xl border ${borderColor} ${hoverBg}
-                            ${isActive ? "border-red-500 bg-red-500/10 font-semibold" : ""}
-                          `}
-                        >
-                          {tag.name}
-                        </button>
-                      );
-                    })}
+                    {Array.isArray(tags) &&
+                      (showAllTags ? tags : tags.slice(0, 8)).map((tag) => {
+                        const isActive = selectedTag === tag.slug;
+                        return (
+                          <button
+                            key={tag.id}
+                            onClick={() => setSelectedTag(tag.slug)}
+                            className={`w-full text-left px-4 py-2 mb-2 rounded-xl border ${borderColor} ${hoverBg}
+                              ${
+                                isActive
+                                  ? "border-red-500 bg-red-500/10 font-semibold"
+                                  : ""
+                              }`}
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
 
-                    {tags.length > 8 && (
+                    {Array.isArray(tags) && tags.length > 8 && (
                       <button
-                        className={`w-full px-4 py-2 mt-2 text-sm text text-blue-500 ${hoverBg} rounded-xl border ${borderColor}`}
+                        className={`w-full px-4 py-2 mt-2 text-sm text-blue-500 ${hoverBg} rounded-xl border ${borderColor}`}
                         onClick={() => setShowAllTags(!showAllTags)}
                       >
-                        {showAllTags  ? "Show Less ▲" : "Show More ▼"}
+                        {showAllTags ? "Show Less ▲" : "Show More ▼"}
                       </button>
                     )}
                   </>
                 )}
               </div>
             </div>
-
           </div>
         </aside>
 
@@ -163,66 +194,61 @@ function Home({ theme, searchQuery }) {
           {posts.map((post) => (
             <article
               key={post.id}
-              className={`rounded-2xl overflow-hidden shadow-md ${cardBg} border ${borderColor}`}
+              className={`rounded-2xl overflow-hidden border ${borderColor} ${cardBg} shadow-sm hover:shadow-lg transition-shadow`}
             >
+
+              {/* HEADER */}
               <header className="p-5 flex items-start gap-4 relative">
-                <div className="h-10 w-10 rounded-full bg-[#3a86ff]">
+                <div className="h-11 w-11 rounded-full overflow-hidden cursor-pointer">
                   <img
-  src={
-    post.author.profile_picture
-      ? post.author.profile_picture
-      : post.author.first_name
-        ? `https://ui-avatars.com/api/?name=${post.author.first_name}&background=random&length=1`
-        : `https://ui-avatars.com/api/?name=${post.author.username}&background=random&length=1`
-  }
-  alt={post.author.username}
-  className="rounded-full object-cover h-10 w-10"
-/>
-
-
+                    src={
+                      post.author.profile_picture
+                        ? `${post.author.profile_picture}?t=${Date.now()}`
+                        : `https://ui-avatars.com/api/?name=${post.author.username}&background=random&length=1`
+                    }
+                    className="rounded-full object-cover h-full w-full"
+                    onClick={() => navigate(`/u/${post.author.username}`)}
+                  />
                 </div>
 
-                <div>
-                  <div className={`text-xs ${isDark ? "text-[#eaeaea]/70" : "text-[#111111]/70"}`}>
-                    <span className="font-bold">{post.author.username}</span>
-                    {" • "}
-                    {formatDate(post.created_at)}
-                  </div>
-
-                  {/* TITLE LIMITED TO 50 CHARS */}
-                  {post.title && (
-                    <h2 className={`mt-2 text-lg font-bold ${text}`}>
-                      {post.title.length > 50
-                        ? post.title.substring(0, 50) + "..."
-                        : post.title}
-                    </h2>
-                  )}
+                <div className="flex flex-col">
+                  <span
+                    className={`font-semibold cursor-pointer hover:underline ${text}`}
+                    onClick={() => navigate(`/u/${post.author.username}`)}
+                  >
+                    {post.author.username}
+                  </span>
+                  <span className="text-xs opacity-60">{timeAgo(post.created_at)}</span>
                 </div>
 
-                {/* OWNER-ONLY MENU — NOW WORKING */}
-                {user && user.id === post.author.id && (
+                {/* MENU */}
+                {loggedUser && loggedUser.id === post.author.id && (
                   <div className="ml-auto relative">
                     <button
-                      onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}
+                      onClick={() =>
+                        setMenuOpen(menuOpen === post.id ? null : post.id)
+                      }
                       className="p-2 rounded-full hover:bg-gray-200/20"
                     >
                       ⋮
                     </button>
 
                     {menuOpen === post.id && (
-                      <div className={`absolute right-0 mt-2 w-10 rounded shadow-md border ${isDark ? "bg-[#2c2c2c]" : "bg-white"} z-20`}>
+                      <div className={`absolute right-0 mt-2 w-32 rounded-xl shadow-lg border ${cardBg} p-1 z-20`}>
                         <button
-                          onClick={() => openEditModal(post)}
-                          className="w-full flex items-center justify-center px-1 py-1 hover:bg-gray-200/30"
+                          onClick={() => {
+                            setEditingPost(post);
+                            setShowCreatePost(true);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-200/20 flex items-center gap-2"
                         >
-                          <HiPencilAlt className="text-xl" />
+                          <HiPencilAlt /> Edit
                         </button>
-
                         <button
                           onClick={() => handleDelete(post.id)}
-                          className="w-full flex items-center justify-center px-1 py-1 hover:bg-red-200/30"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-200/20 text-red-500 flex items-center gap-2"
                         >
-                          <HiTrash className="text-xl" />
+                          <HiTrash /> Delete
                         </button>
                       </div>
                     )}
@@ -230,139 +256,137 @@ function Home({ theme, searchQuery }) {
                 )}
               </header>
 
-              <div className={`px-6 pb-6 ${text}`}>
+              {/* CONTENT */}
+              <div className={`px-6 pb-6 leading-relaxed ${text}`}>
+                {post.title && (
+                  <h2 className="text-lg font-bold">
+                    {post.title.length > 60
+                      ? post.title.slice(0, 60) + "…"
+                      : post.title}
+                  </h2>
+                )}
 
-                {/* CONTENT LIMITED TO 200 CHARS + SEE MORE */}
-                <div className="text-base leading-relaxed">
+                <p>
                   {expandedPost === post.id
                     ? post.content
                     : post.content.length > 200
-                      ? post.content.substring(0, 200) + "..."
-                      : post.content}
+                    ? post.content.slice(0, 200) + "…"
+                    : post.content}
+                </p>
 
-                  {post.content.length > 200 && (
-                    <button
-                      onClick={() =>
-                        setExpandedPost(expandedPost === post.id ? null : post.id)
-                      }
-                      className="mt-2 text-sm text-blue-500 hover:underline bg-transparent"
-                    >
-                      {expandedPost === post.id ? "See less" : "See more"}
-                    </button>
-                  )}
-                </div>
+                {post.content.length > 200 && (
+                  <button
+                    onClick={() =>
+                      setExpandedPost(
+                        expandedPost === post.id ? null : post.id
+                      )
+                    }
+                    className="mt-2 text-sm text-blue-500 hover:underline"
+                  >
+                    {expandedPost === post.id ? "See less" : "See more"}
+                  </button>
+                )}
 
                 {/* TAGS */}
-                {post.tags.length > 0 && (
+                {Array.isArray(post.tags) && post.tags.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {post.tags.map((tag) => (
-                      <button
+                      <span
                         key={tag.id}
                         onClick={() => setSelectedTag(tag.slug)}
-                        className={`text-sm px-3 py-1 rounded-full border border-blue-400/40 
-                          hover:bg-blue-200/40
-                          ${isDark 
-                            ? "bg-blue-900/30 text-white hover:bg-blue-800/40" 
-                            : "bg-blue-100/20 text-blue-600"
-                          }
-                        `}
+                        className={`px-3 py-1 text-xs cursor-pointer rounded-full border 
+                          ${
+                            isDark
+                              ? "bg-blue-900/30 text-blue-300 border-blue-800"
+                              : "bg-blue-100 text-blue-700 border-blue-300"
+                          } hover:bg-blue-200/40`}
                       >
                         #{tag.name}
-                      </button>
+                      </span>
                     ))}
                   </div>
                 )}
 
+                {/* IMAGE */}
                 {post.image && (
-                  <img
-                    src={post.image}
-                    alt="Post"
-                    className="w-full max-h-96 object-cover rounded-xl mt-4"
-                  />
+                  <div className="mt-4">
+                    <img
+                      src={post.image}
+                      alt="post"
+                      className="w-full rounded-xl max-h-96 object-contain shadow-sm"
+                    />
+                  </div>
                 )}
 
-                {/* LIKE + COMMENTS */}
-                <div className="mt-5 flex items-center gap-4 text-sm font-medium">
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className={`flex items-center gap-2 ${hoverBg} px-4 py-1 rounded border ${borderColor}`}
-                  >
-                    {post.is_liked ? <BiSolidLike className="text-blue-500" /> : <BiLike />}
-                    <span>{post.total_likes}</span>
-                  </button>
+                {/* ACTION BAR */}
+                <div className="mt-5 flex items-center gap-5 text-sm">
 
+                  {/* LIKE */}
+                  <button
+  onClick={() => handleLike(post.id)}
+  className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${borderColor} ${hoverBg}`}
+>
+  {post.is_liked ? (
+    <BiSolidLike
+      key={`liked-${post.id}-${post.total_likes}`}
+      className="text-blue-500"
+    />
+  ) : (
+    <BiLike key={`unliked-${post.id}-${post.total_likes}`} />
+  )}
+
+  <span>{post.total_likes}</span>
+</button>
+
+
+
+
+                  {/* COMMENTS */}
                   <button
                     onClick={() => {
-                      const token = localStorage.getItem("access");
-                      if (!token) return setShowLogin(true);
-
+                      if (!loggedUser) return setShowLogin(true);
                       sessionStorage.setItem("scrollY", window.scrollY);
                       navigate(`/post/${post.id}/comments`);
                     }}
-                    className={`flex items-center gap-2 ${hoverBg} px-4 py-1 rounded border ${borderColor}`}
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${borderColor} ${hoverBg}`}
                   >
                     💬 {post.total_comments}
                   </button>
                 </div>
-
               </div>
             </article>
           ))}
+
+          <div ref={loaderRef} className="h-10 flex justify-center items-center opacity-50">
+            <p>Loading...</p>
+          </div>
         </main>
 
-        {/* RIGHT SIDEBAR (unchanged) */}
+        {/* RIGHT SIDEBAR */}
         <aside className="hidden lg:block lg:col-span-3 space-y-5">
-
-          <div className={`rounded-2xl overflow-hidden shadow-md ${cardBg} border ${borderColor}`}>
-            <div className={`px-5 py-3 text-xs font-bold uppercase tracking-wider ${text}/50`}>
-              Advertisement (DEMO)
-            </div>
-            <img src="https://placehold.co/400x400" alt="" />
-            <div className="p-6">
-              <h4 className={`${text} font-bold`}>Grow your business with PayPal</h4>
-              <p className={`${text}/70 text-sm mt-1`}>Accept payments from anywhere.</p>
-              <button className="mt-4 px-5 py-2 rounded-full bg-red-500 text-white font-bold shadow-md hover:shadow-lg">
-                Get Started
-              </button>
-            </div>
-          </div>
-
-          <div className={`rounded-2xl overflow-hidden shadow-md ${cardBg} border ${borderColor}`}>
-            <div className={`px-5 py-3 text-xs font-bold uppercase tracking-wider ${text}/50`}>
-              Advertisement (DEMO)
-            </div>
-            <img src="https://placehold.co/400x400" alt="" />
-            <div className="p-6">
-              <h4 className={`${text} font-bold`}>Grow your business with PayPal</h4>
-              <p className={`${text}/70 text-sm mt-1`}>Accept payments from anywhere.</p>
-              <button className="mt-4 px-5 py-2 rounded-full bg-red-500 text-white font-bold shadow-md hover:shadow-lg">
-                Get Started
-              </button>
-            </div>
-          </div>
-
+          <AdCard cardBg={cardBg} borderColor={borderColor} text={text} />
+          <AdCard cardBg={cardBg} borderColor={borderColor} text={text} />
         </aside>
       </div>
 
-      {/* CREATE/EDIT MODAL */}
+      {/* MODALS */}
       {showCreatePost && (
         <ModalOverlay close={() => { setShowCreatePost(false); setEditingPost(null); }}>
           <CreatePostModal
             isDark={isDark}
+            post={editingPost}
             onClose={() => { setShowCreatePost(false); setEditingPost(null); }}
             onSuccess={(updatedPost) => {
-              if (editingPost) {
-                setPosts(posts.map((p) => (p.id === updatedPost.id ? updatedPost : p)));
-              } else {
-                setPosts([updatedPost, ...posts]);
-              }
+              setPosts((prev) =>
+                editingPost
+                  ? prev.map((p) => (p.id === updatedPost.id ? updatedPost : p))
+                  : [updatedPost, ...prev]
+              );
             }}
-            post={editingPost}
           />
         </ModalOverlay>
       )}
 
-      {/* LOGIN MODAL */}
       {showLogin && (
         <ModalOverlay close={() => setShowLogin(false)}>
           <LoginModal
@@ -377,7 +401,6 @@ function Home({ theme, searchQuery }) {
         </ModalOverlay>
       )}
 
-      {/* SIGNUP MODAL */}
       {showSignup && (
         <ModalOverlay close={() => setShowSignup(false)}>
           <SignupModal
@@ -397,6 +420,7 @@ function Home({ theme, searchQuery }) {
 
 export default Home;
 
+
 function ModalOverlay({ children, close }) {
   return (
     <div
@@ -404,6 +428,24 @@ function ModalOverlay({ children, close }) {
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
     >
       <div onClick={(e) => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+
+function AdCard({ cardBg, borderColor, text }) {
+  return (
+    <div className={`rounded-2xl overflow-hidden shadow-md ${cardBg} border ${borderColor}`}>
+      <div className={`px-5 py-3 text-xs font-bold uppercase tracking-wider ${text}/50`}>
+        Advertisement (DEMO)
+      </div>
+      <img src="https://placehold.co/400x400" alt="" />
+      <div className="p-6">
+        <h4 className={`${text} font-bold`}>Grow your business with PayPal</h4>
+        <p className={`${text}/70 text-sm mt-1`}>Accept payments from anywhere.</p>
+        <button className="mt-4 px-5 py-2 rounded-full bg-red-500 text-white font-bold shadow-md hover:shadow-lg">
+          Get Started
+        </button>
+      </div>
     </div>
   );
 }
