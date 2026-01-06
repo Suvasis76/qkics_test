@@ -1,4 +1,7 @@
 // src/shared/userDetails.jsx
+
+import { useSelector } from "react-redux";
+
 export default function UserDetails({
   user,
   editMode,
@@ -7,7 +10,10 @@ export default function UserDetails({
   setEditData,
   handleSave,
   isDark,
+  readOnly = false,
 }) {
+  const reduxUser = useSelector((state) => state.user.data);
+
   const inputClass = (enabled) =>
     `w-full mt-1 px-3 py-2 rounded border ${
       isDark
@@ -29,14 +35,21 @@ export default function UserDetails({
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">User Details</h2>
 
-        {!editMode ? (
+        {!readOnly && !editMode ? (
           <button
-            onClick={() => setEditMode(true)}
+            onClick={() => {
+              setEditData({
+                first_name: user.first_name || "",
+                last_name: user.last_name || "",
+                phone: reduxUser?.phone || user.phone || "",
+              });
+              setEditMode(true);
+            }}
             className="px-4 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
           >
             Edit
           </button>
-        ) : (
+        ) : !readOnly && editMode ? (
           <div className="flex gap-2">
             <button
               onClick={handleSave}
@@ -46,13 +59,20 @@ export default function UserDetails({
             </button>
 
             <button
-              onClick={() => setEditMode(false)}
+              onClick={() => {
+                setEditData({
+                  first_name: user.first_name || "",
+                  last_name: user.last_name || "",
+                  phone: reduxUser?.phone || user.phone || "",
+                });
+                setEditMode(false);
+              }}
               className="px-4 py-1.5 rounded-md bg-neutral-600 text-white"
             >
               Cancel
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* FORM */}
@@ -61,12 +81,12 @@ export default function UserDetails({
         <div>
           <label className="text-sm opacity-80">First Name</label>
           <input
-            value={editData.first_name}
-            disabled={!editMode}
+            value={editMode ? editData.first_name : user.first_name || ""}
+            disabled={readOnly || !editMode}
             onChange={(e) =>
               setEditData({ ...editData, first_name: e.target.value })
             }
-            className={inputClass(editMode)}
+            className={inputClass(!readOnly && editMode)}
           />
         </div>
 
@@ -74,33 +94,45 @@ export default function UserDetails({
         <div>
           <label className="text-sm opacity-80">Last Name</label>
           <input
-            value={editData.last_name}
-            disabled={!editMode}
+            value={editMode ? editData.last_name : user.last_name || ""}
+            disabled={readOnly || !editMode}
             onChange={(e) =>
               setEditData({ ...editData, last_name: e.target.value })
             }
-            className={inputClass(editMode)}
+            className={inputClass(!readOnly && editMode)}
           />
         </div>
 
-        {/* Email */}
-        <div>
-          <label className="text-sm opacity-80">Email</label>
-          <input value={editData.email} disabled className={inputClass(false)} />
-        </div>
+        {!readOnly && (
+          <>
+            {/* Email */}
+            <div>
+              <label className="text-sm opacity-80">Email</label>
+              <input
+                value={user.email || reduxUser?.email || ""}
+                disabled
+                className={inputClass(false)}
+              />
+            </div>
 
-        {/* Phone */}
-        <div>
-          <label className="text-sm opacity-80">Phone</label>
-          <input
-            value={editData.phone}
-            disabled={!editMode}
-            onChange={(e) =>
-              setEditData({ ...editData, phone: e.target.value })
-            }
-            className={inputClass(editMode)}
-          />
-        </div>
+            {/* Phone */}
+            <div>
+              <label className="text-sm opacity-80">Phone</label>
+              <input
+                value={
+    editMode
+      ? editData.phone || reduxUser?.phone || user.phone || ""
+      : user.phone || reduxUser?.phone || ""
+  }
+                disabled={!editMode}
+                onChange={(e) =>
+                  setEditData({ ...editData, phone: e.target.value })
+                }
+                className={inputClass(editMode)}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

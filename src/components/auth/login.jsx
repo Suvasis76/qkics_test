@@ -49,7 +49,7 @@ function LoginModal({ onClose, openSignup, isDark }) {
     setLoading(false);
   };
 
-    // ENTER KEY TRIGGER LOGIN
+  // ENTER KEY TRIGGER LOGIN
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "Enter") handleLogin();
@@ -59,7 +59,7 @@ function LoginModal({ onClose, openSignup, isDark }) {
   });
 
   return (
-    <div className={`p-6 rounded-2xl shadow-xl w-96 ${bg}`}>
+    <div className={`p-6 rounded-2xl shadow-xl w-[90%] max-w-sm ${bg}`}>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-semibold">Login</h2>
         <button onClick={onClose}>✕</button>
@@ -70,9 +70,8 @@ function LoginModal({ onClose, openSignup, isDark }) {
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value.trim())}
-        className={`w-full px-3 py-2 rounded border mb-3 ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border mb-3 ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
 
       <input
@@ -80,9 +79,8 @@ function LoginModal({ onClose, openSignup, isDark }) {
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
 
       <button
@@ -94,9 +92,9 @@ function LoginModal({ onClose, openSignup, isDark }) {
       </button>
 
       <button onClick={() => {
-    console.log("🔥 LOGIN → SIGNUP CLICKED");
-    openSignup();
-  }} className="w-full mt-2 text-sm underline">
+        console.log("🔥 LOGIN → SIGNUP CLICKED");
+        openSignup();
+      }} className="w-full mt-2 text-sm underline">
         Create an account
       </button>
     </div>

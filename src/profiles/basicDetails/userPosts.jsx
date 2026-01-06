@@ -4,6 +4,7 @@ import { HiPencilAlt, HiTrash } from "react-icons/hi";
 import { savePostViewState } from "../../redux/slices/postViewSlice";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { FaEllipsisH } from "react-icons/fa";
 
 import useLike from "../../components/hooks/useLike";
 import CreatePostModal from "../../components/posts/create_post";
@@ -23,6 +24,7 @@ export default function UserPosts({
   setEditingPost,
   handleDelete,
   setShowLogin,
+  readOnly = false,  
 }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -71,16 +73,19 @@ export default function UserPosts({
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">My Posts</h2>
 
-        <button
-          onClick={() => {
-            if (!token) return setShowLogin(true);
-            setEditingPost(null);
-            setOpenCreate(true);
-          }}
-          className="px-4 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
-        >
-          Create Post
-        </button>
+        {!readOnly && (
+  <button
+    onClick={() => {
+      if (!token) return setShowLogin(true);
+      setEditingPost(null);
+      setOpenCreate(true);
+    }}
+    className="px-4 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+  >
+    Create Post
+  </button>
+)}
+
       </div>
 
       {!posts || posts.length === 0 ? (
@@ -127,6 +132,7 @@ export default function UserPosts({
                 </div>
 
                 {/* MENU BUTTON */}
+                {!readOnly && (
                 <div className="ml-auto relative">
                   <button
                     onClick={() =>
@@ -134,7 +140,7 @@ export default function UserPosts({
                     }
                     className="p-2 rounded-full hover:bg-gray-200/20"
                   >
-                    ⋮
+                    <FaEllipsisH />
                   </button>
 
                   {/* MENU DROPDOWN */}
@@ -165,6 +171,7 @@ export default function UserPosts({
                     </div>
                   )}
                 </div>
+                )}
               </header>
 
               {/* CONTENT */}

@@ -5,8 +5,12 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useAlert } from "../../context/AlertContext";
 import { GoPlus } from "react-icons/go";
 
-export default function ExperiencePage({ experiences = [], setExpertData, isDark }) {
-  
+export default function ExperiencePage({
+  experiences = [],
+  setExpertData,
+  isDark,
+  readOnly = false,
+}) {
   const emptyForm = {
     job_title: "",
     company: "",
@@ -14,7 +18,7 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
     location: "",
     start_date: "",
     end_date: "",
-    description: ""
+    description: "",
   };
 
   const { showConfirm } = useConfirm();
@@ -63,7 +67,7 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
       let res;
 
       if (editingId) {
-        // ⭐ UPDATE using PATCH with ID
+        // UPDATE
         res = await axiosSecure.patch(
           `/v1/experts/experience/${editingId}/`,
           payload
@@ -78,7 +82,7 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
 
         showAlert("Experience updated successfully!", "success");
       } else {
-        // ⭐ CREATE using POST
+        // CREATE
         res = await axiosSecure.post(`/v1/experts/experience/`, payload);
 
         setExpertData((prev) => ({
@@ -92,55 +96,53 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
       setOpenModal(false);
       setForm(emptyForm);
       setEditingId(null);
-
     } catch (err) {
       console.log("Experience save failed:", err);
     }
   };
 
   /* DELETE EXPERIENCE */
-
-   const deleteExperience = async (id) => {
+  const deleteExperience = async (id) => {
     showConfirm({
-          title: "Delete experience?",
-          message: "Are you sure you want to delete this experience? This action cannot be undone.",
-          confirmText: "Delete",
-          cancelText: "Cancel",
-    
-          onConfirm: async () => {
-            try {
-              await axiosSecure.delete(`/v1/experts/experience/${id}/`);
-    
-              setExpertData((prev) => ({
+      title: "Delete experience?",
+      message:
+        "Are you sure you want to delete this experience? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+
+      onConfirm: async () => {
+        try {
+          await axiosSecure.delete(`/v1/experts/experience/${id}/`);
+
+          setExpertData((prev) => ({
             ...prev,
             experiences: prev.experiences.filter((c) => c.id !== id),
           }));
-    
-              showAlert("experience deleted successfully!", "success");
-            } catch (err) {
-              console.log("Delete error:", err);
-              showAlert("Delete failed!", "error");
-            }
-          },
-        });
+
+          showAlert("Experience deleted successfully!", "success");
+        } catch (err) {
+          console.log("Delete error:", err);
+          showAlert("Delete failed!", "error");
+        }
+      },
+    });
   };
 
   return (
     <div>
-
-      {/* Add Button */}
       {/* HEADING + ADD BUTTON */}
-<div className="flex items-center justify-between mb-6">
-  <h2 className="text-xl font-semibold">Your Experience</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold">Your Experience</h2>
 
-  <button
-    onClick={openAddModal}
-    className="px-4 py-2 rounded bg-red-600 text-white"
-  >
-    <GoPlus className="text-xl"/>
-  </button>
-</div>
-
+        {!readOnly && (
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 rounded bg-red-600 text-white"
+          >
+            <GoPlus className="text-xl" />
+          </button>
+        )}
+      </div>
 
       {experiences.length === 0 ? (
         <p className="opacity-70">No experience added yet.</p>
@@ -151,55 +153,46 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
             className={`relative p-5 rounded-xl border mb-4 ${cardBg}`}
           >
             {/* Edit/Delete icons */}
-            <div className="absolute top-3 right-3 flex gap-3">
-              <FiEdit
-                className="cursor-pointer  hover:text-red-500"
-                size={20}
-                onClick={() => openEditModal(exp)}
-              />
-              <FiTrash2
-                className="cursor-pointer  hover:text-red-500"
-                size={20}
-                onClick={() => deleteExperience(exp.id)}
-              />
-            </div>
+            {!readOnly && (
+              <div className="absolute top-3 right-3 flex gap-3">
+                <FiEdit
+                  className="cursor-pointer hover:text-red-500"
+                  size={20}
+                  onClick={() => openEditModal(exp)}
+                />
+                <FiTrash2
+                  className="cursor-pointer hover:text-red-500"
+                  size={20}
+                  onClick={() => deleteExperience(exp.id)}
+                />
+              </div>
+            )}
 
             <div className="space-y-1">
+              <h3 className="text-lg font-semibold">{exp.job_title}</h3>
 
-  {/* Job Title */}
-  <h3 className="text-lg font-semibold">
-    {exp.job_title}
-  </h3>
+              <p className="text-sm opacity-80">
+                {exp.company}
+                {exp.location ? ` • ${exp.location}` : ""}
+              </p>
 
-  {/* Company + Location */}
-  <p className="text-sm opacity-80">
-    {exp.company}
-    {exp.location ? ` • ${exp.location}` : ""}
-  </p>
+              <p className="text-sm opacity-60">
+                {exp.employment_type.replace("_", " ").toUpperCase()} •{" "}
+                {exp.start_date} — {exp.end_date ? exp.end_date : "Present"}
+              </p>
 
-  {/* Employment Type + Duration */}
-  <p className="text-sm opacity-60">
-    {exp.employment_type.replace("_", " ").toUpperCase()} 
-    {" • "}
-    {exp.start_date} — {exp.end_date ? exp.end_date : "Present"}
-  </p>
-
-  {/* Description */}
-  {exp.description && (
-    <p className="text-sm mt-3 leading-relaxed opacity-90">
-      {exp.description}
-    </p>
-  )}
-
-</div>
-
-
+              {exp.description && (
+                <p className="text-sm mt-3 leading-relaxed opacity-90">
+                  {exp.description}
+                </p>
+              )}
+            </div>
           </div>
         ))
       )}
 
       {/* MODAL */}
-      {openModal && (
+      {!readOnly && openModal && (
         <div
           className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
           onClick={() => setOpenModal(false)}
@@ -215,42 +208,48 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
             </h2>
 
             <div className="grid gap-3">
-
-              <label className="text-sm opacity-70">Job Title <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Job Title <span className="text-red-600">*</span>
+              </label>
               <input
-             
                 value={form.job_title}
-                onChange={(e) => setForm({ ...form, job_title: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, job_title: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Company <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Company <span className="text-red-600">*</span>
+              </label>
               <input
-           
                 value={form.company}
-                onChange={(e) => setForm({ ...form, company: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, company: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Location <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Location <span className="text-red-600">*</span>
+              </label>
               <input
-              
                 value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, location: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Employment Type <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Employment Type <span className="text-red-600">*</span>
+              </label>
               <select
                 value={form.employment_type}
                 onChange={(e) =>
                   setForm({ ...form, employment_type: e.target.value })
                 }
                 className="p-2 border rounded"
-                required
               >
                 <option value="">Select Employment Type</option>
                 <option value="full_time">Full Time</option>
@@ -262,7 +261,9 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm opacity-70">Start Date <span className="text-red-600">* </span>:</label>
+                  <label className="text-sm opacity-70">
+                    Start Date <span className="text-red-600">*</span>
+                  </label>
                   <input
                     type="date"
                     value={form.start_date}
@@ -270,7 +271,6 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
                       setForm({ ...form, start_date: e.target.value })
                     }
                     className="p-2 border rounded w-full"
-                    required
                   />
                 </div>
 
@@ -289,7 +289,6 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
 
               <label className="text-sm opacity-70">Description</label>
               <textarea
-           
                 rows="4"
                 value={form.description}
                 onChange={(e) =>
@@ -317,7 +316,6 @@ export default function ExperiencePage({ experiences = [], setExpertData, isDark
           </div>
         </div>
       )}
-
     </div>
   );
 }

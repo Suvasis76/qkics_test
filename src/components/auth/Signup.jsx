@@ -30,7 +30,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
 
   const bg = isDark ? "bg-neutral-800 text-white" : "bg-white text-black";
 
-  
+
 
   // USERNAME VALIDATION
   const handleUsernameChange = async (value) => {
@@ -55,7 +55,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
       });
 
       if (!res.data.available) setUsernameErr("Username already taken");
-    } catch (err){
+    } catch (err) {
       console.log("Username validation error:", err);
     }
   };
@@ -79,7 +79,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
       });
 
       if (!res.data.available) setEmailErr("Email already exists");
-    } catch (err){
+    } catch (err) {
       console.log("Email validation error:", err);
     }
   };
@@ -104,7 +104,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
 
         if (!res.data.available) setPhoneErr("Phone already exists");
       }
-    } catch (err){
+    } catch (err) {
       console.log("Phone validation error:", err);
     }
   };
@@ -150,7 +150,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
         password2,
         email,          // avoid invalid empty string
         phone,
-        user_type:"normal", // REQUIRED
+        user_type: "normal", // REQUIRED
       };
 
       await axios.post(`${API_BASE_URL}v1/auth/register/`, payload);
@@ -167,16 +167,16 @@ function SignupModal({ onClose, openLogin, isDark }) {
       showAlert("Signup successful!", "success");
       onClose();
     } catch (err) {
-  console.log("🔥 SIGNUP ERROR FULL →", err);
-  console.log("🔥 SIGNUP ERROR RESPONSE →", err.response);
+      console.log("🔥 SIGNUP ERROR FULL →", err);
+      console.log("🔥 SIGNUP ERROR RESPONSE →", err.response);
 
-  showAlert(
-    err.response?.data?.detail ||
-    err.response?.data?.message ||
-    "Signup failed. Try again.",
-    "error"
-  );
-}
+      showAlert(
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        "Signup failed. Try again.",
+        "error"
+      );
+    }
 
 
     setLoading(false);
@@ -194,7 +194,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
   });
 
   return (
-    <div className={`p-6 rounded-2xl shadow-xl w-96 space-y-3 ${bg}`}>
+    <div className={`p-6 rounded-2xl shadow-xl w-[90%] max-w-sm space-y-3 ${bg}`}>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-semibold">Sign Up</h2>
         <button onClick={onClose}>✕</button>
@@ -206,9 +206,8 @@ function SignupModal({ onClose, openLogin, isDark }) {
         placeholder="Username"
         value={username}
         onChange={(e) => handleUsernameChange(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
       {usernameErr && <p className="text-red-500 text-xs">{usernameErr}</p>}
 
@@ -218,9 +217,8 @@ function SignupModal({ onClose, openLogin, isDark }) {
         placeholder="Password"
         value={password}
         onChange={(e) => validatePassword(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
       {passwordErr && <p className="text-red-500 text-xs">{passwordErr}</p>}
 
@@ -229,9 +227,8 @@ function SignupModal({ onClose, openLogin, isDark }) {
         placeholder="Confirm Password"
         value={password2}
         onChange={(e) => setPassword2(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
 
       {/* EMAIL */}
@@ -240,9 +237,8 @@ function SignupModal({ onClose, openLogin, isDark }) {
         placeholder="Email"
         value={email}
         onChange={(e) => handleEmailChange(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
         required
       />
       {emailErr && <p className="text-red-500 text-xs">{emailErr}</p>}
@@ -253,9 +249,8 @@ function SignupModal({ onClose, openLogin, isDark }) {
         placeholder="Phone (optional)"
         value={phone}
         onChange={(e) => handlePhoneChange(e.target.value)}
-        className={`w-full px-3 py-2 rounded border ${
-          isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
-        }`}
+        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-neutral-700 border-neutral-600" : "bg-neutral-50"
+          }`}
       />
       {phoneErr && <p className="text-red-500 text-xs">{phoneErr}</p>}
 
@@ -283,9 +278,9 @@ function SignupModal({ onClose, openLogin, isDark }) {
       </button>
 
       <button onClick={() => {
-    console.log("🔥 SIGNUP → LOGIN CLICKED");
-    openLogin();
-  }} className="w-full text-sm underline">
+        console.log("🔥 SIGNUP → LOGIN CLICKED");
+        openLogin();
+      }} className="w-full text-sm underline">
         Already have an account? Login
       </button>
     </div>

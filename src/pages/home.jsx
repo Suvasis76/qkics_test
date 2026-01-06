@@ -6,6 +6,7 @@ import { HiPencilAlt, HiTrash } from "react-icons/hi";
 import { FaGraduationCap, FaUser } from "react-icons/fa";
 import { IoIosRocket } from "react-icons/io";
 import { FaEllipsisH } from "react-icons/fa";
+import { MdOutlineFileDownload } from "react-icons/md";
 
 import { useConfirm } from "../context/ConfirmContext";
 import { useAlert } from "../context/AlertContext";
@@ -22,13 +23,14 @@ import SignupModal from "../components/auth/Signup";
 
 import { useSelector } from "react-redux";
 import { getAccessToken } from "../redux/store/tokenManager";
+import ModalOverlay from "../components/ui/ModalOverlay";
 
 function Home({ theme }) {
   const isDark = theme === "dark";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const searchQuery = searchParams.get("search") || ""; 
+  const searchQuery = searchParams.get("search") || "";
 
   const { showConfirm } = useConfirm();
   const { showAlert } = useAlert();
@@ -37,7 +39,7 @@ function Home({ theme }) {
 
 
 
-  
+
 
   // THEME COLORS
   const bg = isDark ? "bg-[#0f0f0f]" : "bg-[#f5f5f5]";
@@ -57,10 +59,15 @@ function Home({ theme }) {
   const [menuOpen, setMenuOpen] = useState(null);
   const [expandedPost, setExpandedPost] = useState(null);
 
+  const [previewImage, setPreviewImage] = useState(null);
+  const [zoom, setZoom] = useState(1);
+
+
+
   const accessToken = getAccessToken();
 
   // HOOKS
-  const { posts, setPosts, loaderRef , next } = useFeed(null, searchQuery);
+  const { posts, setPosts, loaderRef, next } = useFeed(null, searchQuery);
 
   const { handleLike } = useLike(
     setPosts,
@@ -101,6 +108,44 @@ function Home({ theme }) {
     return "Just now";
   };
 
+
+  const goToProfile = (author) => {
+    // Not logged in → always public profile
+    if (!loggedUser) {
+      navigate(`/profile/${author.username}`);
+      return;
+    }
+
+    // Clicking own profile
+    if (loggedUser.username === author.username) {
+      switch (loggedUser.user_type) {
+        case "expert":
+          navigate("/expert");
+          break;
+        case "entrepreneur":
+          navigate("/entrepreneur");
+          break;
+        case "investor":
+          navigate("/investor");
+          break;
+        case "admin":
+          navigate("/admin");
+          break;
+        case "superadmin":
+          navigate("/superadmin");
+          break;
+        default:
+          navigate("/normal");
+      }
+      return;
+    }
+
+    // Clicking someone else
+    navigate(`/profile/${author.username}`);
+  };
+
+
+
   // DELETE POST
   const handleDelete = async (postId) => {
     showConfirm({
@@ -134,51 +179,51 @@ function Home({ theme }) {
   };
 
   function getUserBadge(user_type, isDark) {
-  switch (user_type) {
-    case "expert":
-      return (
-        <span
-          className="
+    switch (user_type) {
+      case "expert":
+        return (
+          <span
+            className="
             inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium
             border transition-all
             border-purple-400 bg-purple-400/10 text-purple-500
             dark:border-purple-500 dark:bg-purple-500/20 dark:text-purple-300
           "
-        >
-          <FaGraduationCap className="mr-1" /> Expert
-        </span>
-      );
+          >
+            <FaGraduationCap className="mr-1" /> Expert
+          </span>
+        );
 
-    case "entrepreneur":
-      return (
-        <span
-          className="
+      case "entrepreneur":
+        return (
+          <span
+            className="
             inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium
             border transition-all
             border-orange-400 bg-orange-400/10 text-orange-500
             dark:border-orange-500 dark:bg-orange-500/20 dark:text-orange-300
           "
-        >
-          <IoIosRocket className="mr-1" /> Entrepreneur
-        </span>
-      );
+          >
+            <IoIosRocket className="mr-1" /> Entrepreneur
+          </span>
+        );
 
-    default:
-      // Normal user
-      return (
-        <span
-          className="
+      default:
+        // Normal user
+        return (
+          <span
+            className="
             inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium
             border transition-all
             border-gray-400 bg-gray-400/10 text-gray-500
             dark:border-gray-500 dark:bg-gray-500/20 dark:text-gray-300
           "
-        >
-          <FaUser className="mr-1" /> Normal
-        </span>
-      );
+          >
+            <FaUser className="mr-1" /> Normal
+          </span>
+        );
+    }
   }
-}
 
 
   // 🚨 ADMIN REDIRECT LOGIC — ONLY CHANGE YOU NEEDED
@@ -191,9 +236,33 @@ function Home({ theme }) {
   }
 
 
+  const downloadImage = async (url) => {
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      const blob = await response.blob();
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = blobUrl;
+      a.download = url.split("/").pop() || "image.jpg";
+
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed", err);
+      alert("Unable to download image");
+    }
+  };
+
+
+
   return (
-    <div className={`min-h-screen mt-3 ${bg}`}>
-      <div className="pt-14 max-w-6xl mx-auto px-4 pb-10 grid grid-cols-12 gap-4">
+    <div className={`min-h-screen mt-3 ${bg} pb-20 md:pb-10`}>
+      <div className="pt-14 max-w-6xl mx-auto px-4 grid grid-cols-12 gap-4">
 
         {/* LEFT SIDEBAR */}
         <aside className="hidden md:block md:col-span-3 lg:col-span-2">
@@ -269,6 +338,29 @@ function Home({ theme }) {
 
         {/* MAIN FEED */}
         <main className="col-span-12 md:col-span-6 lg:col-span-7 space-y-3">
+
+          {/* MOBILE TAGS LIST */}
+          <div className="md:hidden overflow-x-auto pb-2 flex gap-2 no-scrollbar" style={{ scrollbarWidth: "none" }}>
+            {loadingTags ? (
+              <p className="text-xs opacity-50 px-2">Loading tags...</p>
+            ) : (
+              Array.isArray(tags) && tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => applySearch(tag.slug)}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-full border text-xs font-medium transition-all
+                     ${searchQuery === tag.slug
+                      ? "bg-red-500 text-white border-red-500"
+                      : `${cardBg} ${borderColor} ${text} opacity-80`
+                    }
+                   `}
+                >
+                  {tag.name}
+                </button>
+              ))
+            )}
+          </div>
+
           {posts.map((post) => (
             <article
               key={post.id}
@@ -285,30 +377,30 @@ function Home({ theme }) {
                         : `https://ui-avatars.com/api/?name=${post.author.username}&background=random&length=1`
                     }
                     className="rounded-full object-cover h-full w-full"
-                    onClick={() => navigate(`/u/${post.author.username}`)}
+                    onClick={() => goToProfile(post.author)}
                   />
                 </div>
 
                 <div className="flex flex-col">
 
-  {/* NAME + BADGE ROW */}
-  <div className="flex items-center gap-2">
-    <span
-      className={`font-semibold cursor-pointer hover:underline ${text}`}
-      onClick={() => navigate(`/u/${post.author.username}`)}
-    >
-      {(post.author.first_name || post.author.last_name)
-        ? `${post.author.first_name || ""} ${post.author.last_name || ""}`.trim()
-        : post.author.username}
-    </span>
+                  {/* NAME + BADGE ROW */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-semibold cursor-pointer hover:underline ${text}`}
+                      onClick={() => goToProfile(post.author)}
+                    >
+                      {(post.author.first_name || post.author.last_name)
+                        ? `${post.author.first_name || ""} ${post.author.last_name || ""}`.trim()
+                        : post.author.username}
+                    </span>
 
-    {/* USER BADGE */}
-    {getUserBadge(post.author.user_type, isDark)}
-  </div>
+                    {/* USER BADGE */}
+                    {getUserBadge(post.author.user_type, isDark)}
+                  </div>
 
-  {/* TIME AGO */}
-  <span className="text-xs opacity-60">{timeAgo(post.created_at)}</span>
-</div>
+                  {/* TIME AGO */}
+                  <span className="text-xs opacity-60">{timeAgo(post.created_at)}</span>
+                </div>
 
 
 
@@ -321,7 +413,7 @@ function Home({ theme }) {
                       }
                       className="p-2 rounded-full hover:bg-gray-200/20"
                     >
-                     <FaEllipsisH />
+                      <FaEllipsisH />
                     </button>
 
                     {menuOpen === post.id && (
@@ -365,8 +457,8 @@ function Home({ theme }) {
                   {expandedPost === post.id
                     ? post.content
                     : post.content.length > 200
-                    ? post.content.slice(0, 200) + "…"
-                    : post.content}
+                      ? post.content.slice(0, 200) + "…"
+                      : post.content}
                 </p>
 
                 {post.content.length > 200 && (
@@ -390,10 +482,9 @@ function Home({ theme }) {
                         key={tag.id}
                         onClick={() => applySearch(tag.slug)} // 🔥 tag → search
                         className={`px-3 py-1 text-xs cursor-pointer rounded-full border 
-                          ${
-                            isDark
-                              ? "bg-blue-900/30 text-blue-300 border-blue-800"
-                              : "bg-blue-100 text-blue-700 border-blue-300"
+                          ${isDark
+                            ? "bg-blue-900/30 text-blue-300 border-blue-800"
+                            : "bg-blue-100 text-blue-700 border-blue-300"
                           } hover:bg-blue-200/40`}
                       >
                         #{tag.name}
@@ -404,14 +495,18 @@ function Home({ theme }) {
 
                 {/* IMAGE */}
                 {post.image && (
-                  <div className="mt-4">
+                  <div className="mt-4 overflow-hidden rounded-xl cursor-pointer">
                     <img
                       src={post.image}
                       alt="post"
-                      className="w-full rounded-xl max-h-96 object-contain shadow-sm"
+                      className="w-full h-auto object-contain block"
+                      loading="lazy"
+                      onClick={() => setPreviewImage(post.image)}
                     />
                   </div>
                 )}
+
+
 
                 {/* ACTION BAR */}
                 <div className="mt-5 flex items-center gap-5 text-sm">
@@ -450,14 +545,14 @@ function Home({ theme }) {
           ))}
 
           <div ref={loaderRef} className="h-12 flex justify-center items-center opacity-50">
-  {posts.length === 0 ? (
-    <p>No posts yet</p>
-  ) : next ? (
-    <p>Loading more...</p>
-  ) : (
-    <p>No more posts</p>
-  )}
-</div>
+            {posts.length === 0 ? (
+              <p>No posts yet</p>
+            ) : next ? (
+              <p>Loading more...</p>
+            ) : (
+              <p>No more posts</p>
+            )}
+          </div>
 
 
         </main>
@@ -514,24 +609,105 @@ function Home({ theme }) {
           />
         </ModalOverlay>
       )}
+
+      {previewImage && (
+        <div
+          className="
+      fixed inset-0 z-[100]
+      bg-black/80
+      flex items-center justify-center
+      animate-fadeIn
+    "
+          onClick={() => {
+            setPreviewImage(null);
+            setZoom(1);
+          }}
+        >
+          <div
+            className="
+        relative
+        max-w-[95vw]
+        max-h-[95vh]
+        animate-scaleIn
+      "
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* CLOSE */}
+            <button
+              onClick={() => {
+                setPreviewImage(null);
+                setZoom(1);
+              }}
+              className="absolute -top-4 -right-4 z-20
+                   bg-black text-white
+                   rounded-full w-9 h-9
+                   flex items-center justify-center
+                   hover:bg-red-500"
+            >
+              ✕
+            </button>
+
+            {/* DOWNLOAD */}
+            <button
+              onClick={() => downloadImage(previewImage)}
+              className="absolute -top-4 -left-4 z-20
+             bg-black text-white
+             rounded-full w-9 h-9
+             flex items-center justify-center
+             hover:bg-green-500"
+              title="Download"
+            >
+              <MdOutlineFileDownload />
+            </button>
+
+            {/* IMAGE */}
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="rounded-lg shadow-2xl
+                   max-w-full max-h-[90vh]
+                   object-contain
+                   transition-transform duration-200"
+              style={{ transform: `scale(${zoom})` }}
+
+              /* 🖱️ ZOOM ON SCROLL */
+              // onWheel={(e) => {
+              //   e.preventDefault();
+              //   setZoom((z) =>
+              //     Math.min(Math.max(z + (e.deltaY < 0 ? 0.1 : -0.1), 1), 3)
+              //   );
+              // }}
+
+              /* 👆 DOUBLE CLICK / TAP ZOOM */
+              onDoubleClick={() =>
+                setZoom((z) => (z === 1 ? 2 : 1))
+              }
+
+              draggable={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE FAB: CREATE POST */}
+      <button
+        onClick={() => {
+          if (!loggedUser) return setShowLogin(true);
+          setEditingPost(null);
+          setShowCreatePost(true);
+        }}
+        className="md:hidden fixed bottom-20 right-4 z-40 bg-red-500 text-white h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-red-600 active:scale-95 transition-transform"
+      >
+        <FaPlus />
+      </button>
+
     </div>
   );
 }
 
 export default Home;
 
-function ModalOverlay({ children, close }) {
-  return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <div className="modal-inner">{children}</div>
-    </div>
-  );
-}
+
 
 function AdCard({ cardBg, borderColor, text }) {
   return (
@@ -539,7 +715,7 @@ function AdCard({ cardBg, borderColor, text }) {
       <div className={`px-5 py-3 text-xs font-bold uppercase tracking-wider ${text}/50`}>
         Advertisement (DEMO)
       </div>
-      <img src="https://placehold.co/400x400" alt="" />
+      <img src="https://skcinfotech.in/images/banner/ban1.png" alt="" />
       <div className="p-6">
         <h4 className={`${text} font-bold`}>Grow your business with PayPal</h4>
         <p className={`${text}/70 text-sm mt-1`}>Accept payments from anywhere.</p>

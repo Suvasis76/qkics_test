@@ -28,6 +28,8 @@ function Logout() {
         // 🔥 Clear Redux user state
         dispatch(logoutUser());
 
+        localStorage.removeItem("user_uuid"); // ✅ clear persisted uuid
+
         // 🔥 Clear local storage
         setAccessToken(null);
 

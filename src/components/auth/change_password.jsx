@@ -41,7 +41,7 @@ function ChangePasswordModal({ onClose, isDark }) {
   };
 
   return (
-    <div className={`p-6 rounded-2xl shadow-xl w-96 ${bg}`}>
+    <div className={`p-6 rounded-2xl shadow-xl w-[90%] max-w-sm ${bg}`}>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-semibold">Change Password</h2>
         <button onClick={onClose}>✕</button>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import axiosSecure from "../utils/axiosSecure";
 import useTags from "../hooks/useTags";
 import { useAlert } from "../../context/AlertContext";
@@ -6,7 +7,16 @@ import { useAlert } from "../../context/AlertContext";
 function CreatePostModal({ onClose, onSuccess, isDark, post }) {
   const { showAlert } = useAlert();
   const [title, setTitle] = useState(post?.title || "");
-  const [content, setContent] = useState(post?.content || "");
+  const [content, setContent] = useState("");
+  useEffect(() => {
+  if (!post) return;
+
+  // Backend already sends full content if this is your post
+  setContent(post.content || "");
+}, [post]);
+
+
+
   const [selectedTags, setSelectedTags] = useState(
     post ? post.tags.map((t) => t.id) : []
   );
@@ -55,63 +65,61 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
   --------------------------- */
   // inside your CreatePostModal component
   const handleSubmit = async () => {
-    if (!content.trim()) return showAlert("Content is required", "warning");
+    if (!content.trim()) {
+      return showAlert("Content is required", "warning");
+    }
 
     setLoading(true);
 
+    const PREVIEW_LIMIT = 500;
+const FULL_LIMIT = 10000;
+
+const normalizedContent = content.slice(0, FULL_LIMIT);
+
+const preview_content = normalizedContent.slice(0, PREVIEW_LIMIT);
+const full_content = normalizedContent; // REQUIRED by backend
+
+
+
     try {
-      // CASE A: EDIT and NO new image file
-      //  - if user requested removal -> send JSON with image: null
-      //  - if user did NOT touch image -> send JSON without image (keep existing)
+      /* ------------------------------------------------
+          CASE A: EDIT + NO NEW IMAGE (JSON)
+      ------------------------------------------------ */
       if (post && !newImageFile) {
-        if (removeImage) {
-          // Send JSON with explicit image: null to remove it (works in Postman)
-          const payload = {
-            title,
-            content,
-            tags: selectedTags,
-            image: null,
-          };
+        const payload = {
+          title,
+          preview_content,
+          full_content,
+          tags: selectedTags,
+          ...(removeImage ? { image: null } : {}),
+        };
 
-          const res = await axiosSecure.put(
-            `/v1/community/posts/${post.id}/`,
-            payload,
-            { headers: { "Content-Type": "application/json" } }
-          );
+        const res = await axiosSecure.put(
+          `/v1/community/posts/${post.id}/`,
+          payload,
+          { headers: { "Content-Type": "application/json" } }
+        );
 
-          showAlert("Post updated!", "success");
-          onSuccess(res.data);
-          onClose();
-          return;
-        } else {
-          // No image change: send JSON normally
-          const payload = {
-            title,
-            content,
-            tags: selectedTags,
-          };
-
-          const res = await axiosSecure.put(
-            `/v1/community/posts/${post.id}/`,
-            payload,
-            { headers: { "Content-Type": "application/json" } }
-          );
-
-          showAlert("Post updated!", "success");
-          onSuccess(res.data);
-          onClose();
-          return;
-        }
+        showAlert("Post updated!", "success");
+        onSuccess(res.data);
+        onClose();
+        return;
       }
 
-      // CASE B: CREATE or EDIT with a NEW IMAGE -> use multipart/form-data
-      // Build FormData
+      /* ------------------------------------------------
+          CASE B: CREATE or EDIT WITH NEW IMAGE (multipart)
+      ------------------------------------------------ */
       const formData = new FormData();
-      formData.append("title", title);
-      formData.append("content", content);
 
-      // For DRF ListField, sending tags as JSON in multipart is not reliable across setups.
-      // Append tags individually (DRF will parse multiple 'tags' fields to a list):
+
+
+      formData.append("title", title);
+      formData.append("preview_content", preview_content);
+
+      if (full_content) {
+        formData.append("full_content", full_content);
+      }
+
       selectedTags.forEach((id) => formData.append("tags", id));
 
       if (newImageFile) {
@@ -120,11 +128,15 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
 
       let res;
       if (post) {
-        // Update with multipart (replace image)
-        res = await axiosSecure.put(`/v1/community/posts/${post.id}/`, formData);
+        res = await axiosSecure.put(
+          `/v1/community/posts/${post.id}/`,
+          formData
+        );
       } else {
-        // Create new post with multipart
-        res = await axiosSecure.post("/v1/community/posts/", formData);
+        res = await axiosSecure.post(
+          "/v1/community/posts/",
+          formData
+        );
       }
 
       showAlert(post ? "Post updated!" : "Post created!", "success");
@@ -132,9 +144,12 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
       onClose();
     } catch (err) {
       console.log("Submit error:", err.response?.status, err.response?.data || err);
+
       if (err.response?.data) {
-        // show the main validation keys (friendly)
-        showAlert("Action failed: " + JSON.stringify(err.response.data), "error");
+        showAlert(
+          "Action failed: " + JSON.stringify(err.response.data),
+          "error"
+        );
       } else {
         showAlert("Action failed. Check console.", "error");
       }
@@ -144,6 +159,7 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
   };
 
 
+
   return (
     <div
       onClick={onClose}
@@ -151,7 +167,7 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl shadow-xl ${bg} border ${border}`}
+        className={`w-full max-w-3xl max-h-[85vh] overflow-y-auto p-4 md:p-6 rounded-2xl shadow-xl ${bg} border ${border}`}
       >
         <h2 className="text-xl font-semibold mb-4">
           {post ? "Edit Post" : "Create a Post"}
@@ -175,10 +191,13 @@ function CreatePostModal({ onClose, onSuccess, isDark, post }) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={8}
+          maxLength={10000}
           className={`w-full px-3 py-2 mb-1 rounded border ${border} ${inputBg}`}
           placeholder="Write your post content..."
         />
-        <p className="text-xs opacity-60 mb-3">{content.length}/8000</p>
+
+        <p className="text-xs opacity-60 mb-3">{content.length}/10000</p>
+
 
         {/* ---------------- TAGS ---------------- */}
         <h3 className="text-sm font-semibold mb-2">Tags (max 5):</h3>

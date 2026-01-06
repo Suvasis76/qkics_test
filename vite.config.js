@@ -11,6 +11,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/media": {                      // 🔥 ADD THIS
+        target: "http://192.168.0.114:1000",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });
+
+

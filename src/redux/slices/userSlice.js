@@ -3,7 +3,16 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosSecure from "../../components/utils/axiosSecure";
 import { setAccessToken } from "../store/tokenManager";
 
-// 1️⃣ Fetch logged-in user profile
+/* =====================================
+   INIT: Restore UUID from localStorage
+===================================== */
+const storedUuid = localStorage.getItem("user_uuid");
+
+/* =====================================
+   THUNKS
+===================================== */
+
+// 1️⃣ Fetch logged-in user profile (partial data, NO uuid)
 export const fetchUserProfile = createAsyncThunk(
   "user/fetchProfile",
   async (_, { rejectWithValue }) => {
@@ -11,52 +20,65 @@ export const fetchUserProfile = createAsyncThunk(
       const res = await axiosSecure.get("/v1/auth/me/");
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Something went wrong");
+      return rejectWithValue(
+        err.response?.data || "Failed to fetch profile"
+      );
     }
   }
 );
 
-// 2️⃣ Login
+// 2️⃣ Login (FULL user object incl. uuid)
 export const loginUser = createAsyncThunk(
   "user/login",
   async (credentials, { rejectWithValue }) => {
     try {
       const res = await axiosSecure.post("/v1/auth/login/", credentials);
+      const data = res?.data ?? res;
 
-      // backend returns: { access, refresh (cookie), user: {} }
-      const accessToken = res.data.access;
-      const user = res.data.user;
+      const accessToken = data?.access;
+      const user = data?.user;
 
-      setAccessToken(accessToken); // store only in memory
+      if (!accessToken || !user) {
+        throw new Error("Invalid login response");
+      }
 
-      return user; // return user object only
+      setAccessToken(accessToken); // memory-only token
+      return user; // contains uuid
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Login failed");
+      return rejectWithValue(
+        err?.response?.data || err.message || "Login failed"
+      );
     }
   }
 );
 
-// 3️⃣ Update Profile
+// 3️⃣ Update profile (partial update)
 export const updateUserProfile = createAsyncThunk(
   "user/updateProfile",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axiosSecure.patch(`/v1/users/${payload.id}/`, payload);
-      return res.data;
+      const res = await axiosSecure.patch("/v1/auth/me/update/", payload);
+      return res.data.user;
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Update failed");
+      return rejectWithValue(
+        err.response?.data || "Profile update failed"
+      );
     }
   }
 );
+
+/* =====================================
+   SLICE
+===================================== */
 
 const userSlice = createSlice({
   name: "user",
 
   initialState: {
-    // IMPORTANT: start as "loading" so the app hides the navbar until the first fetch resolves
-    data: null,
+    // ✅ Restore uuid immediately if available
+    data: storedUuid ? { uuid: storedUuid } : null,
     role: null,
-    status: "loading", // "loading" | "success" | "error" | "idle"
+    status: "idle", // idle | loading | success | error
     error: null,
   },
 
@@ -64,11 +86,12 @@ const userSlice = createSlice({
     logoutUser: (state) => {
       state.data = null;
       state.role = null;
-      // set to "error" (or "idle") to indicate not-authenticated and not-loading
       state.status = "error";
       state.error = null;
 
-      setAccessToken(null); // clear token from memory
+      // ✅ Clear persisted identity
+      localStorage.removeItem("user_uuid");
+      setAccessToken(null);
     },
 
     setUserRole: (state, action) => {
@@ -78,41 +101,58 @@ const userSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-      // FETCH PROFILE
+
+      /* -------- FETCH PROFILE -------- */
       .addCase(fetchUserProfile.pending, (state) => {
         state.status = "loading";
       })
       .addCase(fetchUserProfile.fulfilled, (state, action) => {
         state.status = "success";
-        state.data = action.payload;
-        state.role = action.payload.role || null;
+
+        // ✅ MERGE (never overwrite uuid)
+        state.data = {
+          ...state.data,
+          ...action.payload,
+        };
+
+        state.role = action.payload.role || state.role;
         state.error = null;
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
-        // treat rejected as "not authenticated" (or failed) — clear data and set status
         state.status = "error";
         state.data = null;
         state.role = null;
-        state.error = action.payload || action.error?.message || "Failed to fetch profile";
-      });
+        state.error =
+          action.payload ||
+          action.error?.message ||
+          "Failed to fetch profile";
+      })
 
-    // LOGIN
-    builder
+      /* -------- LOGIN -------- */
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = "success";
         state.data = action.payload;
         state.role = action.payload.role || null;
         state.error = null;
+
+        // ✅ Persist uuid safely
+        if (action.payload?.uuid) {
+          localStorage.setItem("user_uuid", action.payload.uuid);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.payload || action.error?.message || "Login failed";
-      });
+        state.error =
+          action.payload || action.error?.message || "Login failed";
+      })
 
-    // PROFILE UPDATE
-    builder.addCase(updateUserProfile.fulfilled, (state, action) => {
-      state.data = { ...state.data, ...action.payload };
-    });
+      /* -------- PROFILE UPDATE -------- */
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.data = {
+          ...state.data,
+          ...action.payload,
+        };
+      });
   },
 });
 

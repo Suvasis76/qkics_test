@@ -5,8 +5,12 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useAlert } from "../../context/AlertContext";
 import { GoPlus } from "react-icons/go";
 
-export default function EducationPage({ education = [], setExpertData, isDark }) {
-
+export default function EducationPage({
+  education = [],
+  setExpertData,
+  isDark,
+  readOnly = false,
+}) {
   const emptyForm = {
     school: "",
     degree: "",
@@ -14,7 +18,7 @@ export default function EducationPage({ education = [], setExpertData, isDark })
     start_year: "",
     end_year: "",
     grade: "",
-    description: ""
+    description: "",
   };
 
   const { showConfirm } = useConfirm();
@@ -26,7 +30,7 @@ export default function EducationPage({ education = [], setExpertData, isDark })
 
   const cardBg = isDark
     ? "bg-neutral-900 border-neutral-700 text-white"
-    : "bg-white border-neutral-300 ";
+    : "bg-white border-neutral-300";
 
   /* OPEN ADD MODAL */
   const openAddModal = () => {
@@ -48,13 +52,13 @@ export default function EducationPage({ education = [], setExpertData, isDark })
       const payload = {
         ...form,
         end_year: form.end_year ? Number(form.end_year) : null,
-        start_year: form.start_year ? Number(form.start_year) : null
+        start_year: form.start_year ? Number(form.start_year) : null,
       };
 
       let res;
 
       if (editingId) {
-        // ⭐ UPDATE
+        // UPDATE
         res = await axiosSecure.patch(
           `/v1/experts/education/${editingId}/`,
           payload
@@ -69,7 +73,7 @@ export default function EducationPage({ education = [], setExpertData, isDark })
 
         showAlert("Education updated", "success");
       } else {
-        // ⭐ CREATE
+        // CREATE
         res = await axiosSecure.post(`/v1/experts/education/`, payload);
 
         setExpertData((prev) => ({
@@ -83,7 +87,6 @@ export default function EducationPage({ education = [], setExpertData, isDark })
       setOpenModal(false);
       setForm(emptyForm);
       setEditingId(null);
-
     } catch (err) {
       console.log("Education save failed:", err);
     }
@@ -92,46 +95,48 @@ export default function EducationPage({ education = [], setExpertData, isDark })
   /* DELETE EDUCATION */
   const deleteEducation = async (id) => {
     showConfirm({
-          title: "Delete education?",
-          message: "Are you sure you want to delete this education? This action cannot be undone.",
-          confirmText: "Delete",
-          cancelText: "Cancel",
-    
-          onConfirm: async () => {
-            try {
-              await axiosSecure.delete(`/v1/experts/education/${id}/`);
-    
-              setExpertData((prev) => ({
+      title: "Delete education?",
+      message:
+        "Are you sure you want to delete this education? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+
+      onConfirm: async () => {
+        try {
+          await axiosSecure.delete(`/v1/experts/education/${id}/`);
+
+          setExpertData((prev) => ({
             ...prev,
             educations: prev.educations.filter((c) => c.id !== id),
           }));
-    
-              showAlert("education deleted successfully!", "success");
-            } catch (err) {
-              console.log("Delete error:", err);
-              showAlert("Delete failed!", "error");
-            }
-          },
-        });
+
+          showAlert("Education deleted successfully!", "success");
+        } catch (err) {
+          console.log("Delete error:", err);
+          showAlert("Delete failed!", "error");
+        }
+      },
+    });
   };
 
   return (
-    <div >
-
+    <div>
       {/* HEADING + ADD BUTTON */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Education</h2>
 
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 rounded bg-red-600 text-white"
-        >
-          <GoPlus className="text-xl"/>
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 rounded bg-red-600 text-white"
+          >
+            <GoPlus className="text-xl" />
+          </button>
+        )}
       </div>
 
       {/* EDUCATION LIST */}
-      {(!education || education.length === 0) ? (
+      {!education || education.length === 0 ? (
         <p className="opacity-70">No education added yet.</p>
       ) : (
         education.map((edu) => (
@@ -140,55 +145,47 @@ export default function EducationPage({ education = [], setExpertData, isDark })
             className={`relative p-5 rounded-xl border mb-4 ${cardBg}`}
           >
             {/* Edit/Delete icons */}
-            <div className="absolute top-3 right-3 flex gap-3">
-              <FiEdit
-                size={20}
-                className="cursor-pointer  hover:text-red-500"
-                onClick={() => openEditModal(edu)}
-              />
-              <FiTrash2
-                size={20}
-                className="cursor-pointer  hover:text-red-500"
-                onClick={() => deleteEducation(edu.id)}
-              />
-            </div>
+            {!readOnly && (
+              <div className="absolute top-3 right-3 flex gap-3">
+                <FiEdit
+                  size={20}
+                  className="cursor-pointer hover:text-red-500"
+                  onClick={() => openEditModal(edu)}
+                />
+                <FiTrash2
+                  size={20}
+                  className="cursor-pointer hover:text-red-500"
+                  onClick={() => deleteEducation(edu.id)}
+                />
+              </div>
+            )}
 
             {/* CARD CONTENT */}
             <div className="space-y-1">
+              <h3 className="text-lg font-semibold">{edu.school}</h3>
 
-  {/* School Name */}
-  <h3 className="text-lg font-semibold">
-    {edu.school}
-  </h3>
+              <p className="text-sm opacity-80">
+                {edu.degree}
+                {edu.field_of_study ? ` • ${edu.field_of_study}` : ""}
+              </p>
 
-  {/* Degree + Field of Study */}
-  <p className="text-sm opacity-80">
-    {edu.degree}
-    {edu.field_of_study ? ` • ${edu.field_of_study}` : ""}
-  </p>
+              <p className="text-sm opacity-60 mt-1">
+                {edu.start_year} — {edu.end_year ? edu.end_year : "Present"}
+                {edu.grade ? ` • Grade: ${edu.grade}` : ""}
+              </p>
 
-  {/* Duration + Grade */}
-  <p className="text-sm opacity-60 mt-1">
-    {edu.start_year} — {edu.end_year ? edu.end_year : "Present"}
-    {edu.grade ? ` • Grade: ${edu.grade}` : ""}
-  </p>
-
-  {/* Description */}
-  {edu.description && (
-    <p className="text-sm mt-3 leading-relaxed opacity-90">
-      {edu.description}
-    </p>
-  )}
-
-</div>
-
-
+              {edu.description && (
+                <p className="text-sm mt-3 leading-relaxed opacity-90">
+                  {edu.description}
+                </p>
+              )}
+            </div>
           </div>
         ))
       )}
 
       {/* MODAL */}
-      {openModal && (
+      {!readOnly && openModal && (
         <div
           className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
           onClick={() => setOpenModal(false)}
@@ -196,7 +193,7 @@ export default function EducationPage({ education = [], setExpertData, isDark })
           <div
             onClick={(e) => e.stopPropagation()}
             className={`w-full max-w-lg p-6 rounded-xl shadow-lg ${
-              isDark ? "bg-neutral-800 text-white" : "bg-white "
+              isDark ? "bg-neutral-800 text-white" : "bg-white"
             }`}
           >
             <h2 className="text-xl font-semibold mb-4">
@@ -204,61 +201,74 @@ export default function EducationPage({ education = [], setExpertData, isDark })
             </h2>
 
             <div className="grid gap-3">
-
-               <label className="text-sm opacity-70">Institute <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Institute <span className="text-red-600">*</span>
+              </label>
               <input
-                
                 value={form.school}
-                onChange={(e) => setForm({ ...form, school: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, school: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Degree <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Degree <span className="text-red-600">*</span>
+              </label>
               <input
                 value={form.degree}
-                onChange={(e) => setForm({ ...form, degree: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, degree: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Field of Study <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Field of Study <span className="text-red-600">*</span>
+              </label>
               <input
                 value={form.field_of_study}
-                onChange={(e) => setForm({ ...form, field_of_study: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, field_of_study: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-              <label className="text-sm opacity-70">Start Year <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Start Year <span className="text-red-600">*</span>
+              </label>
               <input
                 type="number"
                 value={form.start_year}
-                onChange={(e) => setForm({ ...form, start_year: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, start_year: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
               <label className="text-sm opacity-70">End Year</label>
               <input
                 type="number"
                 value={form.end_year ?? ""}
-                onChange={(e) => setForm({ ...form, end_year: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, end_year: e.target.value })
+                }
                 className="p-2 border rounded"
               />
 
-             <label className="text-sm opacity-70">Grade <span className="text-red-600">* </span>:</label>
+              <label className="text-sm opacity-70">
+                Grade <span className="text-red-600">*</span>
+              </label>
               <input
-                
                 value={form.grade}
-                onChange={(e) => setForm({ ...form, grade: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, grade: e.target.value })
+                }
                 className="p-2 border rounded"
-                required
               />
 
-            <label className="text-sm opacity-70">Description</label>
+              <label className="text-sm opacity-70">Description</label>
               <textarea
-            
                 rows="2"
                 value={form.description}
                 onChange={(e) =>
@@ -266,7 +276,6 @@ export default function EducationPage({ education = [], setExpertData, isDark })
                 }
                 className="p-2 border rounded"
               />
-
             </div>
 
             <div className="flex justify-end gap-3 mt-5">
@@ -284,11 +293,9 @@ export default function EducationPage({ education = [], setExpertData, isDark })
                 {editingId ? "Update" : "Add"}
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

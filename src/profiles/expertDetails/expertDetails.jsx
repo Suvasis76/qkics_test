@@ -7,6 +7,7 @@ export default function ExpertDetails({
   setEditExp,
   handleSaveExpert,
   isDark,
+  readOnly = false,
 }) {
   const inputClass = (enabled) =>
     `w-full mt-1 px-3 py-2 rounded border ${
@@ -15,42 +16,47 @@ export default function ExpertDetails({
           ? "bg-neutral-700 border-green-400 text-white"
           : "bg-neutral-800 border-neutral-700 text-white opacity-60"
         : enabled
-        ? "bg-white border-green-400 "
-        : "bg-neutral-100 border-neutral-300  opacity-60"
+        ? "bg-white border-green-400"
+        : "bg-neutral-100 border-neutral-300 opacity-60"
     }`;
 
   return (
     <div
       className={`p-6 rounded-xl shadow ${
-        isDark ? "bg-neutral-900 text-white" : "bg-white "
+        isDark ? "bg-neutral-900 text-white" : "bg-white"
       }`}
     >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Expert Details</h2>
 
-        {!editExp ? (
-          <button
-            onClick={() => setEditExp(true)}
-            className="px-4 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
-          >
-            Edit
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={handleSaveExpert}
-              className="px-4 py-1.5 rounded-md bg-green-500 text-white"
-            >
-              Save
-            </button>
+        {/* ACTION BUTTONS */}
+        {!readOnly && (
+          <>
+            {!editExp ? (
+              <button
+                onClick={() => setEditExp(true)}
+                className="px-4 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveExpert}
+                  className="px-4 py-1.5 rounded-md bg-green-500 text-white"
+                >
+                  Save
+                </button>
 
-            <button
-              onClick={() => setEditExp(false)}
-              className="px-4 py-1.5 rounded-md bg-neutral-600 text-white"
-            >
-              Cancel
-            </button>
-          </div>
+                <button
+                  onClick={() => setEditExp(false)}
+                  className="px-4 py-1.5 rounded-md bg-neutral-600 text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

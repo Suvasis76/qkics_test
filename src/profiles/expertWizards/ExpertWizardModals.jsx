@@ -53,9 +53,8 @@ function Input({
         placeholder={placeholder}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full mt-1 px-3 py-2 rounded border ${
-          disabled ? "bg-neutral-100/50 cursor-not-allowed" : ""
-        }`}
+        className={`w-full mt-1 px-3 py-2 rounded border ${disabled ? "bg-neutral-100/50 cursor-not-allowed" : ""
+          }`}
       />
     </div>
   );

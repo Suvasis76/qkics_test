@@ -1,6 +1,6 @@
 // src/profiles/entrepreneur/entrepreneurDetails.jsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axiosSecure from "../../components/utils/axiosSecure";
 import { useAlert } from "../../context/AlertContext";
 
@@ -8,11 +8,19 @@ export default function EntrepreneurDetails({
   entreData,
   setEntreData,
   isDark,
+  readOnly = false,
 }) {
   const { showAlert } = useAlert();
 
   const [editMode, setEditMode] = useState(false);
   const [local, setLocal] = useState({ ...entreData });
+
+  /* ✅ FIX: keep local state in sync with parent data */
+  useEffect(() => {
+    if (entreData) {
+      setLocal({ ...entreData });
+    }
+  }, [entreData]);
 
   const fundingOptions = [
     ["pre_seed", "Pre-Seed"],
@@ -26,30 +34,41 @@ export default function EntrepreneurDetails({
     `w-full mt-1 px-3 py-2 rounded border ${
       isDark
         ? enabled
-          ? "bg-neutral-700 border-blue-400 text-white"
+          ? "bg-neutral-700 border-green-400 text-white"
           : "bg-neutral-800 border-neutral-700 text-white opacity-60"
         : enabled
-        ? "bg-white border-blue-400"
+        ? "bg-white border-green-400"
         : "bg-neutral-100 border-neutral-300 opacity-60"
     }`;
 
   const handleSave = async () => {
-    try {
-      const res = await axiosSecure.patch(
-        "/v1/entrepreneurs/me/profile/",
-        local
-      );
+  try {
+    const payload = {
+      startup_name: local.startup_name,
+      one_liner: local.one_liner,
+      website: local.website,
+      description: local.description,
+      industry: local.industry,
+      location: local.location,
+      funding_stage: local.funding_stage,
+    };
 
-      setEntreData(res.data);
-      setLocal(res.data);
-      setEditMode(false);
+    const res = await axiosSecure.patch(
+      "/v1/entrepreneurs/me/profile/",
+      payload
+    );
 
-      showAlert("Entrepreneur profile updated!", "success");
-    } catch (err) {
-      console.log(err);
-      showAlert("Failed to update!", "error");
-    }
-  };
+    setEntreData(res.data);
+    setLocal(res.data);
+    setEditMode(false);
+
+    showAlert("Entrepreneur profile updated!", "success");
+  } catch (err) {
+    console.error(err?.response?.data || err);
+    showAlert("Failed to update!", "error");
+  }
+};
+
 
   return (
     <div
@@ -60,38 +79,40 @@ export default function EntrepreneurDetails({
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Entrepreneur Details</h2>
 
-        {!editMode ? (
-          <button
-            onClick={() => setEditMode(true)}
-            className="px-4 py-1.5 rounded-md bg-red-500 text-white hover:bg-red-700"
-          >
-            Edit
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              className="px-4 py-1.5 rounded-md bg-green-600 text-white"
-            >
-              Save
-            </button>
+        {!readOnly && (
+          <>
+            {!editMode ? (
+              <button
+                onClick={() => setEditMode(true)}
+                className="px-4 py-1.5 rounded-md bg-red-500 text-white hover:bg-red-700"
+              >
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-1.5 rounded-md bg-green-600 text-white"
+                >
+                  Save
+                </button>
 
-            <button
-              onClick={() => {
-                setEditMode(false);
-                setLocal(entreData);
-              }}
-              className="px-4 py-1.5 rounded-md bg-neutral-600 text-white"
-            >
-              Cancel
-            </button>
-          </div>
+                <button
+                  onClick={() => {
+                    setEditMode(false);
+                    setLocal({ ...entreData }); // ✅ reset on cancel
+                  }}
+                  className="px-4 py-1.5 rounded-md bg-neutral-600 text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* ALL FIELDS */}
       <div className="flex flex-col gap-4">
-
         <Field
           label="Startup Name"
           value={local.startup_name}
@@ -140,7 +161,6 @@ export default function EntrepreneurDetails({
           inputClass={inputClass}
         />
 
-        {/* Dropdown */}
         <div>
           <label className="text-sm opacity-80">Funding Stage</label>
           <select
@@ -169,7 +189,7 @@ function Field({ label, value, onChange, editMode, inputClass }) {
       <label className="text-sm opacity-80">{label}</label>
       <input
         disabled={!editMode}
-        value={value}
+        value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         className={inputClass(editMode)}
       />
@@ -184,7 +204,7 @@ function Textarea({ label, value, onChange, editMode, inputClass }) {
       <textarea
         disabled={!editMode}
         rows={4}
-        value={value}
+        value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         className={inputClass(editMode)}
       />

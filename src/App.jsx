@@ -8,11 +8,11 @@ import { fetchUserProfile } from "./redux/slices/userSlice";
 
 import Navbar from "./components/navbar";
 import Home from "./pages/home";
-import Following from "./pages/following";
+import Booking from "./pages/booking";
 import Space from "./pages/space";
 import Notification from "./pages/notification";
 import Logout from "./components/auth/logout";
-import Profile from "./profiles/normalProfile";
+import NormalProfile from "./profiles/normalProfile";
 import EntrepreneurProfile from "./profiles/entrepreneur";
 import ExpertProfile from "./profiles/expertProfile";
 import Comments from "./components/posts/comment";
@@ -24,6 +24,12 @@ import AdminPosts from "./admin/adminPages/adminPosts";
 import SystemLogs from "./admin/superadminPages/systemLogs";
 import AdminLayout from "./admin/adminLayout";
 import AdminTags from "./admin/adminPages/adminTags";
+import ProfileFetcher from "./profiles/ProfileFetcher";
+import ExpertSlots from "./profiles/expertSlots/ExpertSlots";
+import BookSession from "./components/profileFetch/expertBooking/BookSession";
+import InvestorProfile from "./profiles/investorProfile";
+import Error from "./error";
+import PaymentPage from "./payment";
 
 function App() {
   const dispatch = useDispatch();
@@ -115,13 +121,16 @@ function App() {
   return (
     <>
       {/* HIDE NAVBAR FOR ADMIN ROUTES */}
+      {/* HIDE NAVBAR FOR ADMIN ROUTES */}
       {shouldShowNavbar() && (
-        <Navbar
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          user={user}
-          onSearch={(text) => setSearchText(text)}
-        />
+        <>
+          <Navbar
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            user={user}
+            onSearch={(text) => setSearchText(text)}
+          />
+        </>
       )}
 
 
@@ -131,14 +140,24 @@ function App() {
           element={<Home theme={theme} searchQuery={searchText} />}
         />
 
-        <Route path="/following" element={<Following theme={theme} />} />
+        <Route path="/booking" element={<Booking theme={theme} />} />
         <Route path="/spaces" element={<Space theme={theme} />} />
         <Route path="/notifications" element={<Notification theme={theme} />} />
-        <Route path="/profile" element={<Profile theme={theme} />} />
+        <Route path="/normal" element={<NormalProfile theme={theme} />} />
         <Route path="/entrepreneur" element={<EntrepreneurProfile theme={theme} />} />
         <Route path="/upgrade/expert" element={<ExpertWizard theme={theme} />} />
         <Route path="/expert" element={<ExpertProfile theme={theme} />} />
+        {/* Booking */}
+        <Route path="/expert/slots" element={<ExpertSlots theme={theme} />} />
+        <Route path="/book-session/:expertUuid" element={<BookSession />} />
+
         <Route path="/upgrade/entrepreneur" element={<EntrepreneurWizard theme={theme} />} />
+
+        <Route path="/investor" element={<InvestorProfile theme={theme} />} />
+
+        <Route path="/profile/:username" element={<ProfileFetcher theme={theme} />} />
+        <Route path="/payment" element={<PaymentPage theme={theme} />} />
+
 
         <Route path="/post/:id/comments" element={<Comments theme={theme} />} />
         <Route path="/logout" element={<Logout />} />
@@ -151,7 +170,11 @@ function App() {
           <Route path="/adminUsers" element={<AdminUsers theme={theme} />} />
           <Route path="/adminPosts" element={<AdminPosts theme={theme} />} />
           <Route path="/system-logs" element={<SystemLogs theme={theme} />} />
+
         </Route>
+
+        {/* 404 Not Found */}
+        <Route path="*" element={<Error />} />
       </Routes>
     </>
   );
