@@ -11,7 +11,11 @@ import { MdOutlineEventAvailable } from "react-icons/md";
 
 import { useDispatch, useSelector } from "react-redux";
 import { loadUserPosts, removePost } from "../redux/slices/postsSlice";
-import { fetchUserProfile } from "../redux/slices/userSlice";
+import {
+  fetchUserProfile,
+  setActiveProfileData,
+  clearActiveProfileData,
+} from "../redux/slices/userSlice";
 
 
 // Shared Components
@@ -39,11 +43,13 @@ import {
 } from "react-icons/pi";
 
 export default function ExpertProfile({
-  theme,
-  profile,
+  profile: propProfile,
   readOnly = false,
   disableSelfFetch = false,
 }) {
+  const { theme, activeProfileData, data: loggedUser } = useSelector((state) => state.user);
+  const profile = activeProfileData?.profile || propProfile;
+
   const isDark = theme === "dark";
   const dispatch = useDispatch();
   const postView = useSelector((state) => state.postView);
@@ -101,6 +107,7 @@ export default function ExpertProfile({
   useEffect(() => {
     setPosts(postsState);
   }, [postsState]);
+  // Removed local posts sync as UserPosts now uses Redux directly
 
   // Load posts for viewed profile
   useEffect(() => {
@@ -197,15 +204,22 @@ export default function ExpertProfile({
   }, [postView]);
 
   useEffect(() => {
-    if (!profile && !disableSelfFetch) {
+    if (!disableSelfFetch) {
       axiosSecure.get("/v1/experts/me/profile/").then((res) => {
         setExpertData(res.data);
+        dispatch(setActiveProfileData({ role: "expert", profile: res.data }));
 
         // ✅ ADD THIS LINE
         dispatch(fetchUserProfile());
       });
     }
-  }, [profile, disableSelfFetch, dispatch]);
+
+    return () => {
+      if (!disableSelfFetch) {
+        dispatch(clearActiveProfileData());
+      }
+    };
+  }, [disableSelfFetch, dispatch]);
 
 
 
@@ -219,15 +233,20 @@ export default function ExpertProfile({
       });
 
       // ✅ update local expertData.user
-      setExpertData((prev) => ({
-        ...prev,
-        user: {
-          ...prev.user,
-          first_name: editData.first_name,
-          last_name: editData.last_name,
-          phone: editData.phone ?? prev.user.phone,
-        },
-      }));
+      setExpertData((prev) => {
+        const updated = {
+          ...prev,
+          user: {
+            ...prev.user,
+            first_name: editData.first_name,
+            last_name: editData.last_name,
+            phone: editData.phone ?? prev.user.phone,
+          },
+        };
+        // ✅ SYNC ACTIVE PROFILE DATA
+        dispatch(setActiveProfileData({ role: "expert", profile: updated }));
+        return updated;
+      });
 
       setEditData({
         first_name: editData.first_name,
@@ -284,10 +303,14 @@ export default function ExpertProfile({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setExpertData({
+      const updated = {
         ...expertData,
         user: res.data.user,
-      });
+      };
+      setExpertData(updated);
+
+      // ✅ SYNC ACTIVE PROFILE DATA
+      dispatch(setActiveProfileData({ role: "expert", profile: updated }));
 
       dispatch(fetchUserProfile());
 
@@ -297,24 +320,7 @@ export default function ExpertProfile({
     }
   };
 
-  /* ---------- DELETE POST ---------- */
-  const handleDelete = async (postId) => {
-    showConfirm({
-      title: "Delete Post?",
-      message: "Are you sure?",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: async () => {
-        try {
-          await axiosSecure.delete(`/v1/community/posts/${postId}/`);
-          dispatch(removePost(postId));
-          showAlert("Post deleted successfully!", "success");
-        } catch {
-          showAlert("Delete failed!", "error");
-        }
-      },
-    });
-  };
+  // Delete logic moved to UserPosts component
 
   /* ---------- LOADING ---------- */
   if (!expertData || !user) {
@@ -378,7 +384,7 @@ export default function ExpertProfile({
 
               <p className="text-neutral-400 mt-2 mb-2">
                 <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium border border-blue-400 bg-blue-400/10 text-blue-500">
-                  @{user.username}
+                  @{user?.username}
                 </span>
                 &nbsp;—&nbsp;
                 <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium border border-purple-400 bg-purple-400/10 text-purple-500">
@@ -483,14 +489,11 @@ export default function ExpertProfile({
               <div className="w-full md:w-3/4 min-w-0 space-y-10 ">
                 <div ref={userRef} className="scroll-mt-24">
                   <UserDetails
-                    user={user}
                     editMode={!readOnly && editUser}
                     setEditMode={readOnly ? () => { } : setEditUser}
                     editData={editData}
                     setEditData={readOnly ? () => { } : setEditData}
                     handleSave={handleSaveUser}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -501,8 +504,6 @@ export default function ExpertProfile({
                     editExp={!readOnly && editExp}
                     setEditExp={readOnly ? () => { } : setEditExp}
                     handleSaveExpert={handleSaveExpert}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -510,8 +511,6 @@ export default function ExpertProfile({
                   <ExperiencePage
                     experiences={expertData.experiences || []}
                     setExpertData={setExpertData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -519,8 +518,6 @@ export default function ExpertProfile({
                   <EducationPage
                     education={expertData.educations || []}
                     setExpertData={setExpertData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -528,8 +525,6 @@ export default function ExpertProfile({
                   <CertificationPage
                     certifications={expertData.certifications || []}
                     setExpertData={setExpertData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -537,8 +532,6 @@ export default function ExpertProfile({
                   <HonorsPage
                     honors_awards={expertData.honors_awards || []}
                     setExpertData={setExpertData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
               </div>
@@ -546,18 +539,7 @@ export default function ExpertProfile({
           )}
 
           {activeTab === "posts" && (
-            <UserPosts
-              posts={posts}
-              setPosts={setPosts}
-              isDark={isDark}
-              openCreate={openCreate}
-              setOpenCreate={setOpenCreate}
-              editingPost={editingPost}
-              setEditingPost={setEditingPost}
-              handleDelete={handleDelete}
-              setShowLogin={() => { }}
-              readOnly={readOnly}
-            />
+            <UserPosts />
           )}
         </div>
       </div>

@@ -11,7 +11,7 @@ import { IoIosRocket } from "react-icons/io";
 
 import { useDispatch, useSelector } from "react-redux";
 import { loadUserPosts, removePost } from "../redux/slices/postsSlice";
-import { fetchUserProfile } from "../redux/slices/userSlice";
+import { fetchUserProfile, setActiveProfileData, clearActiveProfileData } from "../redux/slices/userSlice";
 
 
 import UserDetails from "./basicDetails/userDetails";
@@ -26,11 +26,13 @@ import useLike from "../components/hooks/useLike";
 import { getAccessToken } from "../redux/store/tokenManager";
 
 export default function EntrepreneurProfile({
-  theme,
-  profile,
+  profile: propProfile,
   readOnly = false,
   disableSelfFetch = false,
 }) {
+  const { theme, activeProfileData, data: loggedUser } = useSelector((state) => state.user);
+  const profile = activeProfileData?.profile || propProfile;
+
   const isDark = theme === "dark";
 
   const dispatch = useDispatch();
@@ -57,11 +59,7 @@ export default function EntrepreneurProfile({
   /* --------------------------
       POSTS STATE
   --------------------------- */
-  const [posts, setPosts] = useState([]);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [editingPost, setEditingPost] = useState(null);
-
-  useEffect(() => setPosts(postsRedux), [postsRedux]);
+  // Removed local posts sync as UserPosts now uses Redux directly
 
   // 🔑 LOAD POSTS FOR OWN PROFILE
   useEffect(() => {
@@ -114,15 +112,22 @@ export default function EntrepreneurProfile({
       FETCH SELF PROFILE  ✅ FIXED
   --------------------------- */
   useEffect(() => {
-    if (!profile && !disableSelfFetch) {
+    if (!disableSelfFetch) {
       axiosSecure.get("/v1/entrepreneurs/me/profile/").then((res) => {
         setEntreData(res.data);
+        dispatch(setActiveProfileData({ role: "entrepreneur", profile: res.data }));
 
         // ✅ ADD THIS LINE
         dispatch(fetchUserProfile());
       });
     }
-  }, [profile, disableSelfFetch, dispatch]);
+
+    return () => {
+      if (!disableSelfFetch) {
+        dispatch(clearActiveProfileData());
+      }
+    };
+  }, [disableSelfFetch, dispatch]);
 
 
   /* --------------------------
@@ -137,15 +142,20 @@ export default function EntrepreneurProfile({
       });
 
       // ✅ update profile state
-      setEntreData((prev) => ({
-        ...prev,
-        user: {
-          ...prev.user,
-          first_name: editData.first_name,
-          last_name: editData.last_name,
-          phone: editData.phone ?? prev.user.phone,
-        },
-      }));
+      setEntreData((prev) => {
+        const updated = {
+          ...prev,
+          user: {
+            ...prev.user,
+            first_name: editData.first_name,
+            last_name: editData.last_name,
+            phone: editData.phone ?? prev.user.phone,
+          },
+        };
+        // ✅ SYNC ACTIVE PROFILE DATA
+        dispatch(setActiveProfileData({ role: "entrepreneur", profile: updated }));
+        return updated;
+      });
 
       // ✅ CRITICAL FIX: sync editData AFTER save
       setEditData({
@@ -185,10 +195,14 @@ export default function EntrepreneurProfile({
       );
 
       // ✅ update local entrepreneur user
-      setEntreData((prev) => ({
-        ...prev,
+      const updated = {
+        ...entreData,
         user: res.data.user,
-      }));
+      };
+      setEntreData(updated);
+
+      // ✅ SYNC ACTIVE PROFILE DATA
+      dispatch(setActiveProfileData({ role: "entrepreneur", profile: updated }));
 
       // ✅ sync redux auth user
       dispatch(fetchUserProfile());
@@ -207,24 +221,12 @@ export default function EntrepreneurProfile({
       LIKE HANDLER
   --------------------------- */
   const token = getAccessToken();
-  const { handleLike } = useLike(setPosts, token, () => { });
+  // Like handler moved to UserPosts component
 
   /* --------------------------
       DELETE POST
   --------------------------- */
-  const handleDelete = async (postId) => {
-    showConfirm({
-      title: "Delete Post?",
-      message: "This cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: async () => {
-        await axiosSecure.delete(`/v1/community/posts/${postId}/`);
-        dispatch(removePost(postId));
-        showAlert("Post deleted!", "success");
-      },
-    });
-  };
+  // Delete logic moved to UserPosts component
 
   /* --------------------------
       SCROLL HANDLING
@@ -346,7 +348,7 @@ export default function EntrepreneurProfile({
 
             <p className="text-neutral-400 mt-2 mb-2">
               <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium border border-blue-400 bg-blue-400/10 text-blue-500">
-                @{user.username}
+                @{user?.username}
               </span>
               &nbsp;—&nbsp;
               <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium border border-orange-400 bg-orange-400/10 text-orange-500">
@@ -423,14 +425,11 @@ export default function EntrepreneurProfile({
               <div className="w-full md:w-3/4 min-w-0 space-y-10">
                 <div ref={userRef} className="scroll-mt-24">
                   <UserDetails
-                    user={user}
                     editMode={!readOnly && editUser}
                     setEditMode={readOnly ? () => { } : setEditUser}
                     editData={editData}
                     setEditData={readOnly ? () => { } : setEditData}
                     handleSave={handleSaveUser}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -438,8 +437,6 @@ export default function EntrepreneurProfile({
                   <EntrepreneurDetails
                     entreData={entreData}
                     setEntreData={setEntreData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
               </div>
@@ -447,18 +444,7 @@ export default function EntrepreneurProfile({
           )}
 
           {activeTab === "posts" && (
-            <UserPosts
-              posts={posts}
-              setPosts={setPosts}
-              isDark={isDark}
-              openCreate={!readOnly && openCreate}
-              setOpenCreate={readOnly ? () => { } : setOpenCreate}
-              editingPost={editingPost}
-              setEditingPost={setEditingPost}
-              handleDelete={readOnly ? () => { } : handleDelete}
-              handleLike={handleLike}
-              readOnly={readOnly}
-            />
+            <UserPosts />
           )}
         </div>
       </div>

@@ -1,6 +1,8 @@
 import { FaCreditCard, FaLock } from "react-icons/fa";
+import { useSelector } from "react-redux";
 
-export default function PaymentPage({ theme = "light" }) {
+export default function PaymentPage() {
+  const { theme } = useSelector((state) => state.user);
   const isDark = theme === "dark";
 
   const bg = isDark ? "bg-neutral-900 text-white" : "bg-gray-50 text-black";
@@ -13,7 +15,7 @@ export default function PaymentPage({ theme = "light" }) {
   return (
     <div className={`min-h-screen flex items-center justify-center px-4 ${bg}`}>
       <div className={`w-full max-w-lg rounded-2xl shadow-xl border ${border} ${card} p-6`}>
-        
+
         {/* HEADER */}
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold">Complete Your Payment</h1>
@@ -38,7 +40,7 @@ export default function PaymentPage({ theme = "light" }) {
 
         {/* PAYMENT FORM */}
         <div className="space-y-4">
-          
+
           {/* CARD NUMBER */}
           <div>
             <label className="text-sm font-medium">Card Number</label>

@@ -5,12 +5,12 @@ import axiosSecure from "../utils/axiosSecure";
 import useThemeClasses from "../utils/useThemeClasses";
 import { useAlert } from "../../context/AlertContext";
 
-export default function MyBookings({ theme }) {
+export default function MyBookings() {
+  const { theme, data: user } = useSelector((state) => state.user);
   const isDark = theme === "dark";
+
   const { card, border } = useThemeClasses(isDark);
   const { showAlert } = useAlert();
-
-  const user = useSelector((state) => state.user.data);
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,13 +18,13 @@ export default function MyBookings({ theme }) {
 
   const [now, setNow] = useState(new Date());
 
-useEffect(() => {
-  const interval = setInterval(() => {
-    setNow(new Date());
-  }, 60000); // update every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 60000); // update every minute
 
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, []);
 
 
   /* ---------------- FETCH BOOKINGS ---------------- */
@@ -72,13 +72,13 @@ useEffect(() => {
   };
 
   const isChatEnabled = (booking) => {
-  if (!booking.chat_room_id) return false;
+    if (!booking.chat_room_id) return false;
 
-  const start = new Date(booking.start_datetime);
-  const end = new Date(booking.end_datetime);
+    const start = new Date(booking.start_datetime);
+    const end = new Date(booking.end_datetime);
 
-  return now >= start && now <= end;
-};
+    return now >= start && now <= end;
+  };
 
 
   /* ---------------- UI STATES ---------------- */
@@ -141,13 +141,12 @@ useEffect(() => {
                 </div>
 
                 <span
-                  className={`text-xs px-2 py-1 rounded font-medium ${
-                    getStatusLabel(booking) === "CONFIRMED"
-                      ? "bg-green-600 text-white"
-                      : getStatusLabel(booking) === "PENDING"
+                  className={`text-xs px-2 py-1 rounded font-medium ${getStatusLabel(booking) === "CONFIRMED"
+                    ? "bg-green-600 text-white"
+                    : getStatusLabel(booking) === "PENDING"
                       ? "bg-yellow-500 text-black"
                       : "bg-gray-500 text-white"
-                  }`}
+                    }`}
                 >
                   {getStatusLabel(booking)}
                 </span>
@@ -184,27 +183,26 @@ useEffect(() => {
 
               {/* CHAT */}
               {booking.chat_room_id && (
-  <div className="mt-4">
-    <button
-      disabled={!isChatEnabled(booking)}
-      onClick={() =>
-        console.log(
-          "Navigate to chat:",
-          booking.chat_room_id
-        )
-      }
-      className={`px-4 py-2 rounded text-sm font-medium transition ${
-        isChatEnabled(booking)
-          ? "bg-red-600 text-white hover:bg-red-700"
-          : "bg-gray-400 text-gray-700 cursor-not-allowed"
-      }`}
-    >
-      {isChatEnabled(booking)
-        ? "Open Chat"
-        : "Chat available at session time"}
-    </button>
-  </div>
-)}
+                <div className="mt-4">
+                  <button
+                    disabled={!isChatEnabled(booking)}
+                    onClick={() =>
+                      console.log(
+                        "Navigate to chat:",
+                        booking.chat_room_id
+                      )
+                    }
+                    className={`px-4 py-2 rounded text-sm font-medium transition ${isChatEnabled(booking)
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-gray-400 text-gray-700 cursor-not-allowed"
+                      }`}
+                  >
+                    {isChatEnabled(booking)
+                      ? "Open Chat"
+                      : "Chat available at session time"}
+                  </button>
+                </div>
+              )}
 
             </div>
           ))}

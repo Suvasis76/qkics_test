@@ -50,7 +50,7 @@ function ReplyInput({
   );
 }
 
-export default function Comments({ theme }) {
+export default function Comments() {
   const { id: postId } = useParams();
   const navigate = useNavigate();
 
@@ -58,7 +58,7 @@ export default function Comments({ theme }) {
   const { showConfirm } = useConfirm();
 
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.user.data);
+  const { data: user, theme } = useSelector((state) => state.user);
   const postView = useSelector((state) => state.postView);
 
   const [post, setPost] = useState(null);
@@ -85,13 +85,13 @@ export default function Comments({ theme }) {
 
 
   const normalizeContent = (text, previewLimit = 300, fullLimit = 5000) => {
-  const normalized = text.slice(0, fullLimit);
+    const normalized = text.slice(0, fullLimit);
 
-  return {
-    preview_content: normalized.slice(0, previewLimit),
-    full_content: normalized,
+    return {
+      preview_content: normalized.slice(0, previewLimit),
+      full_content: normalized,
+    };
   };
-};
 
 
   /* -------------------------------------------------------
@@ -194,22 +194,22 @@ export default function Comments({ theme }) {
       ADD COMMENT
   --------------------------------------------------------- */
   const addComment = async () => {
-  if (!user || !content.trim()) return;
+    if (!user || !content.trim()) return;
 
-  const payload = normalizeContent(content, 300, 5000);
+    const payload = normalizeContent(content, 300, 5000);
 
-  const res = await axiosSecure.post(
-    `/v1/community/posts/${postId}/comments/`,
-    payload
-  );
+    const res = await axiosSecure.post(
+      `/v1/community/posts/${postId}/comments/`,
+      payload
+    );
 
-  setComments((p) => [
-    { ...res.data, replies: [], reply_count: 0 },
-    ...p,
-  ]);
+    setComments((p) => [
+      { ...res.data, replies: [], reply_count: 0 },
+      ...p,
+    ]);
 
-  setContent("");
-};
+    setContent("");
+  };
 
 
   /* -------------------------------------------------------
@@ -218,27 +218,27 @@ export default function Comments({ theme }) {
   const addReply = async (commentId) => {
     if (!user || !replyContent.trim()) return;
 
-  const payload = normalizeContent(replyContent, 300, 5000);
+    const payload = normalizeContent(replyContent, 300, 5000);
 
-  const res = await axiosSecure.post(
-    `/v1/community/comments/${commentId}/replies/`,
-    payload
-  );
+    const res = await axiosSecure.post(
+      `/v1/community/comments/${commentId}/replies/`,
+      payload
+    );
 
-  setComments((prev) =>
-    prev.map((c) =>
-      c.id === commentId
-        ? {
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
             ...c,
             replies: [...c.replies, res.data],
             reply_count: c.reply_count + 1,
           }
-        : c
-    )
-  );
+          : c
+      )
+    );
 
-  setReplyContent("");
-  setActiveReplyBox(null);
+    setReplyContent("");
+    setActiveReplyBox(null);
     setOpenReplies((p) => ({ ...p, [commentId]: true }));
   };
 

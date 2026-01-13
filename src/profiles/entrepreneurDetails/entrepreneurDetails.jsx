@@ -4,12 +4,19 @@ import { useState, useEffect } from "react";
 import axiosSecure from "../../components/utils/axiosSecure";
 import { useAlert } from "../../context/AlertContext";
 
+import { useSelector } from "react-redux";
+
 export default function EntrepreneurDetails({
   entreData,
   setEntreData,
-  isDark,
-  readOnly = false,
 }) {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
+  const activeProfile = useSelector((state) => state.user.activeProfileData);
+  const isDark = theme === "dark";
+
+  const isOwnProfile = loggedUser?.username === (activeProfile?.profile?.user?.username || activeProfile?.profile?.username);
+  const readOnly = !isOwnProfile;
+
   const { showAlert } = useAlert();
 
   const [editMode, setEditMode] = useState(false);
@@ -31,50 +38,48 @@ export default function EntrepreneurDetails({
   ];
 
   const inputClass = (enabled) =>
-    `w-full mt-1 px-3 py-2 rounded border ${
-      isDark
-        ? enabled
-          ? "bg-neutral-700 border-green-400 text-white"
-          : "bg-neutral-800 border-neutral-700 text-white opacity-60"
-        : enabled
+    `w-full mt-1 px-3 py-2 rounded border ${isDark
+      ? enabled
+        ? "bg-neutral-700 border-green-400 text-white"
+        : "bg-neutral-800 border-neutral-700 text-white opacity-60"
+      : enabled
         ? "bg-white border-green-400"
         : "bg-neutral-100 border-neutral-300 opacity-60"
     }`;
 
   const handleSave = async () => {
-  try {
-    const payload = {
-      startup_name: local.startup_name,
-      one_liner: local.one_liner,
-      website: local.website,
-      description: local.description,
-      industry: local.industry,
-      location: local.location,
-      funding_stage: local.funding_stage,
-    };
+    try {
+      const payload = {
+        startup_name: local.startup_name,
+        one_liner: local.one_liner,
+        website: local.website,
+        description: local.description,
+        industry: local.industry,
+        location: local.location,
+        funding_stage: local.funding_stage,
+      };
 
-    const res = await axiosSecure.patch(
-      "/v1/entrepreneurs/me/profile/",
-      payload
-    );
+      const res = await axiosSecure.patch(
+        "/v1/entrepreneurs/me/profile/",
+        payload
+      );
 
-    setEntreData(res.data);
-    setLocal(res.data);
-    setEditMode(false);
+      setEntreData(res.data);
+      setLocal(res.data);
+      setEditMode(false);
 
-    showAlert("Entrepreneur profile updated!", "success");
-  } catch (err) {
-    console.error(err?.response?.data || err);
-    showAlert("Failed to update!", "error");
-  }
-};
+      showAlert("Entrepreneur profile updated!", "success");
+    } catch (err) {
+      console.error(err?.response?.data || err);
+      showAlert("Failed to update!", "error");
+    }
+  };
 
 
   return (
     <div
-      className={`p-6 rounded-xl shadow ${
-        isDark ? "bg-neutral-900 text-white" : "bg-white text-black"
-      }`}
+      className={`p-6 rounded-xl shadow ${isDark ? "bg-neutral-900 text-white" : "bg-white text-black"
+        }`}
     >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Entrepreneur Details</h2>

@@ -26,7 +26,8 @@ import { useSelector } from "react-redux";
 import { getAccessToken } from "../redux/store/tokenManager";
 import ModalOverlay from "../components/ui/ModalOverlay";
 
-function Home({ theme }) {
+function Home() {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
   const isDark = theme === "dark";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,7 +37,6 @@ function Home({ theme }) {
   const { showConfirm } = useConfirm();
   const { showAlert } = useAlert();
 
-  const loggedUser = useSelector((state) => state.user.data);
 
 
 
@@ -208,8 +208,8 @@ function Home({ theme }) {
             <IoIosRocket className="mr-1" /> Entrepreneur
           </span>
         );
-      
-        case "investor":
+
+      case "investor":
         return (
           <span
             className="

@@ -16,10 +16,10 @@ export const loadUserPosts = createAsyncThunk(
       return Array.isArray(data)
         ? data
         : Array.isArray(data.results)
-        ? data.results
-        : Array.isArray(data.posts)
-        ? data.posts
-        : [];
+          ? data.results
+          : Array.isArray(data.posts)
+            ? data.posts
+            : [];
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data || "Failed loading posts");
     }
@@ -32,6 +32,9 @@ const postsSlice = createSlice({
     items: [],
     loading: false,
     error: null,
+    // ✅ UI state for post management
+    editingPost: null,
+    isCreateModalOpen: false,
   },
 
   reducers: {
@@ -44,6 +47,12 @@ const postsSlice = createSlice({
     },
     removePost(state, action) {
       state.items = state.items.filter((p) => p.id !== action.payload);
+    },
+    setEditingPost(state, action) {
+      state.editingPost = action.payload;
+    },
+    setCreateModalOpen(state, action) {
+      state.isCreateModalOpen = action.payload;
     },
   },
 
@@ -63,5 +72,5 @@ const postsSlice = createSlice({
   },
 });
 
-export const { updatePost, addPost, removePost } = postsSlice.actions;
+export const { updatePost, addPost, removePost, setEditingPost, setCreateModalOpen } = postsSlice.actions;
 export default postsSlice.reducer;

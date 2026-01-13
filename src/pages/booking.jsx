@@ -12,11 +12,11 @@ import { useSelector } from "react-redux";
 
 
 
-export default function Booking({ theme }) {
+export default function Booking() {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
   const isDark = theme === "dark";
 
   const navigate = useNavigate();
-  const loggedUser = useSelector((state) => state.user.data);
 
 
   /* ----------------------------

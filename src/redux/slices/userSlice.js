@@ -80,6 +80,10 @@ const userSlice = createSlice({
     role: null,
     status: "idle", // idle | loading | success | error
     error: null,
+    // ✅ UI / Theme state
+    theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+    // ✅ Profile viewer state
+    activeProfileData: null,
   },
 
   reducers: {
@@ -96,6 +100,19 @@ const userSlice = createSlice({
 
     setUserRole: (state, action) => {
       state.role = action.payload;
+    },
+
+    setTheme: (state, action) => {
+      state.theme = action.payload;
+      localStorage.setItem("theme", action.payload);
+    },
+
+    setActiveProfileData: (state, action) => {
+      state.activeProfileData = action.payload;
+    },
+
+    clearActiveProfileData: (state) => {
+      state.activeProfileData = null;
     },
   },
 
@@ -156,5 +173,11 @@ const userSlice = createSlice({
   },
 });
 
-export const { logoutUser, setUserRole } = userSlice.actions;
+export const {
+  logoutUser,
+  setUserRole,
+  setTheme,
+  setActiveProfileData,
+  clearActiveProfileData,
+} = userSlice.actions;
 export default userSlice.reducer;

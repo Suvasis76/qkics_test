@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import axiosSecure from "../../components/utils/axiosSecure";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { useAlert } from "../../context/AlertContext";
@@ -8,9 +9,13 @@ import { GoPlus } from "react-icons/go";
 export default function HonorsPage({
   honors_awards = [],
   setExpertData,
-  isDark,
-  readOnly = false,
 }) {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
+  const activeProfile = useSelector((state) => state.user.activeProfileData);
+  const isDark = theme === "dark";
+
+  const isOwnProfile = loggedUser?.username === (activeProfile?.profile?.user?.username || activeProfile?.profile?.username);
+  const readOnly = !isOwnProfile;
   const { showAlert } = useAlert();
   const { showConfirm } = useConfirm();
 
@@ -190,9 +195,8 @@ export default function HonorsPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`w-full max-w-lg p-6 rounded-xl shadow-lg ${
-              isDark ? "bg-neutral-800 text-white" : "bg-white"
-            }`}
+            className={`w-full max-w-lg p-6 rounded-xl shadow-lg ${isDark ? "bg-neutral-800 text-white" : "bg-white"
+              }`}
           >
             <h2 className="text-xl font-semibold mb-4">
               {editingId ? "Edit Honor" : "Add Honor"}

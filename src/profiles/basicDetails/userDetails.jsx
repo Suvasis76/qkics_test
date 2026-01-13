@@ -3,33 +3,37 @@
 import { useSelector } from "react-redux";
 
 export default function UserDetails({
-  user,
   editMode,
   setEditMode,
   editData,
   setEditData,
   handleSave,
-  isDark,
-  readOnly = false,
 }) {
-  const reduxUser = useSelector((state) => state.user.data);
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
+  const activeProfile = useSelector((state) => state.user.activeProfileData);
+
+  const isDark = theme === "dark";
+  const user = activeProfile?.profile?.user || activeProfile?.profile || {};
+
+  const isOwnProfile = loggedUser?.username === (user.username || activeProfile?.profile?.username);
+  const readOnly = !isOwnProfile;
+
+  const reduxUser = loggedUser;
 
   const inputClass = (enabled) =>
-    `w-full mt-1 px-3 py-2 rounded border ${
-      isDark
-        ? enabled
-          ? "bg-neutral-700 border-green-400 text-white"
-          : "bg-neutral-800 border-neutral-700 text-white opacity-60"
-        : enabled
+    `w-full mt-1 px-3 py-2 rounded border ${isDark
+      ? enabled
+        ? "bg-neutral-700 border-green-400 text-white"
+        : "bg-neutral-800 border-neutral-700 text-white opacity-60"
+      : enabled
         ? "bg-white border-green-400 text-black"
         : "bg-neutral-100 border-neutral-300 text-black opacity-60"
     }`;
 
   return (
     <div
-      className={`p-6 rounded-xl shadow ${
-        isDark ? "bg-neutral-900 text-white" : "bg-white text-black"
-      }`}
+      className={`p-6 rounded-xl shadow ${isDark ? "bg-neutral-900 text-white" : "bg-white text-black"
+        }`}
     >
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
@@ -120,10 +124,10 @@ export default function UserDetails({
               <label className="text-sm opacity-80">Phone</label>
               <input
                 value={
-    editMode
-      ? editData.phone || reduxUser?.phone || user.phone || ""
-      : user.phone || reduxUser?.phone || ""
-  }
+                  editMode
+                    ? editData.phone || reduxUser?.phone || user.phone || ""
+                    : user.phone || reduxUser?.phone || ""
+                }
                 disabled={!editMode}
                 onChange={(e) =>
                   setEditData({ ...editData, phone: e.target.value })

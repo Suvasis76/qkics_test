@@ -11,11 +11,11 @@ import { FaBriefcase } from "react-icons/fa";
 
 import { useDispatch, useSelector } from "react-redux";
 import { loadUserPosts, removePost } from "../redux/slices/postsSlice";
-import { fetchUserProfile } from "../redux/slices/userSlice";
+import { fetchUserProfile, setActiveProfileData, clearActiveProfileData } from "../redux/slices/userSlice";
 
 import UserDetails from "./basicDetails/userDetails";
 import UserPosts from "./basicDetails/userPosts";
-import InvestorDetails from "./investorDetails/InvestorDetails";
+import InvestorDetails from "./investorDetails/investorDetails";
 import ModalOverlay from "../components/ui/ModalOverlay";
 
 import { MdOutlineManageAccounts } from "react-icons/md";
@@ -25,11 +25,13 @@ import useLike from "../components/hooks/useLike";
 import { getAccessToken } from "../redux/store/tokenManager";
 
 export default function InvestorProfile({
-  theme,
-  profile,
+  profile: propProfile,
   readOnly = false,
   disableSelfFetch = false,
 }) {
+  const { theme, activeProfileData, data: loggedUser } = useSelector((state) => state.user);
+  const profile = activeProfileData?.profile || propProfile;
+
   const isDark = theme === "dark";
 
   const dispatch = useDispatch();
@@ -54,11 +56,7 @@ export default function InvestorProfile({
   /* --------------------------
       POSTS STATE
   --------------------------- */
-  const [posts, setPosts] = useState([]);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [editingPost, setEditingPost] = useState(null);
-
-  useEffect(() => setPosts(postsRedux), [postsRedux]);
+  // Removed local posts sync as UserPosts now uses Redux directly
 
   useEffect(() => {
     if (!readOnly && user?.username) {
@@ -108,13 +106,20 @@ export default function InvestorProfile({
       FETCH SELF PROFILE
   --------------------------- */
   useEffect(() => {
-    if (!profile && !disableSelfFetch) {
+    if (!disableSelfFetch) {
       axiosSecure.get("/v1/investors/me/profile/").then((res) => {
         setInvestorData(res.data);
+        dispatch(setActiveProfileData({ role: "investor", profile: res.data }));
         dispatch(fetchUserProfile());
       });
     }
-  }, [profile, disableSelfFetch, dispatch]);
+
+    return () => {
+      if (!disableSelfFetch) {
+        dispatch(clearActiveProfileData());
+      }
+    };
+  }, [disableSelfFetch, dispatch]);
 
   /* --------------------------
       SAVE USER
@@ -127,15 +132,20 @@ export default function InvestorProfile({
         ...(editData.phone ? { phone: editData.phone } : {}),
       });
 
-      setInvestorData((prev) => ({
-        ...prev,
-        user: {
-          ...prev.user,
-          first_name: editData.first_name,
-          last_name: editData.last_name,
-          phone: editData.phone ?? prev.user.phone,
-        },
-      }));
+      setInvestorData((prev) => {
+        const updated = {
+          ...prev,
+          user: {
+            ...prev.user,
+            first_name: editData.first_name,
+            last_name: editData.last_name,
+            phone: editData.phone ?? prev.user.phone,
+          },
+        };
+        // ✅ SYNC ACTIVE PROFILE DATA
+        dispatch(setActiveProfileData({ role: "investor", profile: updated }));
+        return updated;
+      });
 
       setEditData({ ...editData });
       dispatch(fetchUserProfile());
@@ -163,10 +173,14 @@ export default function InvestorProfile({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setInvestorData((prev) => ({
-        ...prev,
+      const updated = {
+        ...investorData,
         user: res.data.user,
-      }));
+      };
+      setInvestorData(updated);
+
+      // ✅ SYNC ACTIVE PROFILE DATA
+      dispatch(setActiveProfileData({ role: "investor", profile: updated }));
 
       dispatch(fetchUserProfile());
       showAlert("Profile picture updated!", "success");
@@ -177,24 +191,8 @@ export default function InvestorProfile({
   };
 
   /* --------------------------
-      LIKE / DELETE
+      SCROLL HANDLING
   --------------------------- */
-  const token = getAccessToken();
-  const { handleLike } = useLike(setPosts, token, () => { });
-
-  const handleDelete = async (postId) => {
-    showConfirm({
-      title: "Delete Post?",
-      message: "This cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: async () => {
-        await axiosSecure.delete(`/v1/community/posts/${postId}/`);
-        dispatch(removePost(postId));
-        showAlert("Post deleted!", "success");
-      },
-    });
-  };
 
   /* --------------------------
       SCROLL HANDLING
@@ -296,7 +294,7 @@ export default function InvestorProfile({
 
             <p className="text-neutral-400 mt-2">
               <span className="inline-flex px-2 py-1 rounded-xl text-xs border border-blue-400 bg-blue-400/10 text-blue-500">
-                @{user.username}
+                @{user?.username}
               </span>
               &nbsp;—&nbsp;
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs border border-red-400 bg-red-400/10 text-red-500">
@@ -361,14 +359,11 @@ export default function InvestorProfile({
               <div className="w-full md:w-3/4 space-y-10">
                 <div ref={userRef} className="scroll-mt-24">
                   <UserDetails
-                    user={user}
                     editMode={!readOnly && editUser}
                     setEditMode={readOnly ? () => { } : setEditUser}
                     editData={editData}
                     setEditData={readOnly ? () => { } : setEditData}
                     handleSave={handleSaveUser}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
 
@@ -376,8 +371,6 @@ export default function InvestorProfile({
                   <InvestorDetails
                     investorData={investorData}
                     setInvestorData={setInvestorData}
-                    isDark={isDark}
-                    readOnly={readOnly}
                   />
                 </div>
               </div>
@@ -385,18 +378,7 @@ export default function InvestorProfile({
           )}
 
           {activeTab === "posts" && (
-            <UserPosts
-              posts={posts}
-              setPosts={setPosts}
-              isDark={isDark}
-              openCreate={!readOnly && openCreate}
-              setOpenCreate={readOnly ? () => { } : setOpenCreate}
-              editingPost={editingPost}
-              setEditingPost={setEditingPost}
-              handleDelete={readOnly ? () => { } : handleDelete}
-              handleLike={handleLike}
-              readOnly={readOnly}
-            />
+            <UserPosts />
           )}
         </div>
       </div>

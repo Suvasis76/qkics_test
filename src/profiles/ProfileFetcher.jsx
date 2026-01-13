@@ -1,15 +1,17 @@
 // src/profiles/ProfileFetcher.jsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import axiosSecure from "../components/utils/axiosSecure";
+import { setActiveProfileData, clearActiveProfileData } from "../redux/slices/userSlice";
 
 import EntrepreneurProfile from "./entrepreneur";
 import ExpertProfile from "./expertProfile";
 import NormalProfile from "./normalProfile";
 import InvestorProfile from "./investorProfile";
 
-export default function ProfileFetcher({ theme }) {
+export default function ProfileFetcher() {
+  const dispatch = useDispatch();
   const { username } = useParams();
   const loggedUser = useSelector((state) => state.user.data);
 
@@ -18,8 +20,13 @@ export default function ProfileFetcher({ theme }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    dispatch(clearActiveProfileData());
     fetchProfile();
-  }, [username]);
+
+    return () => {
+      dispatch(clearActiveProfileData());
+    };
+  }, [username, dispatch]);
 
   const fetchProfile = async () => {
     try {
@@ -31,6 +38,7 @@ export default function ProfileFetcher({ theme }) {
       );
 
       setProfileData(res.data);
+      dispatch(setActiveProfileData(res.data));
     } catch (err) {
       console.error("Profile fetch failed", err);
       setError(
@@ -76,7 +84,6 @@ export default function ProfileFetcher({ theme }) {
     loggedUser?.username === profileUsername;
 
   const commonProps = {
-    theme,
     profile,
     readOnly: !isOwnProfile,
     disableSelfFetch: true,

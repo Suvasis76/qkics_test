@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import axiosSecure from "../../components/utils/axiosSecure";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -8,9 +9,14 @@ import { GoPlus } from "react-icons/go";
 export default function ExperiencePage({
   experiences = [],
   setExpertData,
-  isDark,
-  readOnly = false,
 }) {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
+  const activeProfile = useSelector((state) => state.user.activeProfileData);
+  const isDark = theme === "dark";
+
+  const isOwnProfile = loggedUser?.username === (activeProfile?.profile?.user?.username || activeProfile?.profile?.username);
+  const readOnly = !isOwnProfile;
+
   const emptyForm = {
     job_title: "",
     company: "",
@@ -57,8 +63,8 @@ export default function ExperiencePage({
         start_date: form.start_date,
         end_date:
           form.end_date === "" ||
-          form.end_date === null ||
-          form.end_date === undefined
+            form.end_date === null ||
+            form.end_date === undefined
             ? null
             : form.end_date,
         description: form.description,
@@ -199,9 +205,8 @@ export default function ExperiencePage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`w-full max-w-lg p-6 rounded-xl shadow-lg ${
-              isDark ? "bg-neutral-800 text-white" : "bg-white text-black"
-            }`}
+            className={`w-full max-w-lg p-6 rounded-xl shadow-lg ${isDark ? "bg-neutral-800 text-white" : "bg-white text-black"
+              }`}
           >
             <h2 className="text-xl font-semibold mb-4">
               {editingId ? "Edit Experience" : "Add Experience"}

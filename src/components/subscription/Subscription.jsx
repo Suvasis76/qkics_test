@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { FaCheck } from "react-icons/fa";
 import axiosSecure from "../utils/axiosSecure";
+import { useSelector } from "react-redux";
 
-export default function Subscription({ theme = "light" }) {
+export default function Subscription() {
+  const { theme } = useSelector((state) => state.user);
   const isDark = theme === "dark";
 
   /* ============================
@@ -110,21 +112,20 @@ export default function Subscription({ theme = "light" }) {
 
             return (
               <div
-  key={plan.uuid}
-  className={`rounded-2xl p-8 shadow-xl border ${card}
-    ${
-      isActive
-        ? "border-green-500 ring-2 ring-green-500/30"
-        : border
-    }`}
->
+                key={plan.uuid}
+                className={`rounded-2xl p-8 shadow-xl border ${card}
+    ${isActive
+                    ? "border-green-500 ring-2 ring-green-500/30"
+                    : border
+                  }`}
+              >
 
 
                 {isActive && (
-  <span className="inline-block bg-green-600 text-white text-xs px-3 py-1 rounded-full mb-4">
-    Current Plan
-  </span>
-)}
+                  <span className="inline-block bg-green-600 text-white text-xs px-3 py-1 rounded-full mb-4">
+                    Current Plan
+                  </span>
+                )}
 
 
                 <h2 className="text-2xl font-semibold">{plan.name}</h2>
@@ -156,17 +157,16 @@ export default function Subscription({ theme = "light" }) {
                   disabled={isActive || subscribingPlan === plan.uuid}
                   onClick={() => handleSubscribe(plan.uuid)}
                   className={`w-full mt-8 py-3 rounded-xl font-semibold transition
-                    ${
-                      isActive
-                        ? buttonDisabled
-                        : "bg-red-600 text-white hover:bg-red-700"
+                    ${isActive
+                      ? buttonDisabled
+                      : "bg-red-600 text-white hover:bg-red-700"
                     }`}
                 >
                   {isActive
                     ? "Active"
                     : subscribingPlan === plan.uuid
-                    ? "Processing..."
-                    : "Subscribe"}
+                      ? "Processing..."
+                      : "Subscribe"}
                 </button>
               </div>
             );

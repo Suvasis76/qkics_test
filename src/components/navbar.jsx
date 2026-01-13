@@ -1,6 +1,6 @@
 // src/components/navbar.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FaUser, FaKey, FaSignOutAlt } from "react-icons/fa";
 import { FaUsersGear } from "react-icons/fa6";
@@ -16,7 +16,6 @@ import SignupModal from "./auth/Signup";
 import ChangePasswordModal from "./auth/change_password";
 import MobileBottomNav from "./ui/MobileBottomNav";
 import ModalOverlay from "./ui/ModalOverlay";
-import useSearchPosts from "./hooks/useSearch";
 
 
 import {
@@ -30,11 +29,9 @@ function Navbar({ theme, onToggleTheme, user }) {
   const isDark = theme === "dark";
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  const { searchPosts, results, loading } = useSearchPosts();
 
 
 
@@ -53,7 +50,8 @@ function Navbar({ theme, onToggleTheme, user }) {
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [searchQuery, setSearchQuery] = useState("");
+
 
   const [dropdown, setDropdown] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -62,122 +60,34 @@ function Navbar({ theme, onToggleTheme, user }) {
 
   const isLoggedIn = !!user;
 
-  // Sync Input when URL changes
-  useEffect(() => {
-    setSearchQuery(searchParams.get("search") || "");
-  }, [searchParams]);
 
-  useEffect(() => {
-  if (searchQuery.trim().length < 3) {
-    setShowSuggestions(false);
-    return;
-  }
 
-  const delay = setTimeout(() => {
-    searchPosts(searchQuery);
-    setShowSuggestions(true);
-  }, 300);
 
-  return () => clearTimeout(delay);
-}, [searchQuery]);
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
 
-const triggerSearch = () => {
-  setShowSuggestions(false);
+  const triggerSearch = () => {
+    if (!searchQuery.trim()) return;
 
-  const next = new URLSearchParams(searchParams);
-
-  if (searchQuery.trim()) {
-    next.set("search", searchQuery.trim());
-  } else {
-    next.delete("search");
-  }
-
-  setSearchParams(next);
-};
-
-const clearSearch = () => {
-  setSearchQuery("");
-  setShowSuggestions(false);
-
-  const next = new URLSearchParams(searchParams);
-  next.delete("search");
-
-  setSearchParams(next);
-};
-
+    navigate(
+      `/search?q=${encodeURIComponent(searchQuery.trim())}&type=posts`
+    );
+  };
 
 
   // SEARCH TRIGGERED ONLY ON ENTER
- const handleSearchKeyDown = (e) => {
-  if (e.key === "Enter") {
-    triggerSearch();
-  }
-};
-
-
-
-useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (!e.target.closest(".max-w-md")) {
-      setShowSuggestions(false);
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      triggerSearch();
     }
   };
 
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
 
-// ⬇️⬇️⬇️ PUT CODE HERE ⬇️⬇️⬇️
 
-const normalizedQuery = searchQuery.toLowerCase();
 
-const tagSuggestions = [];
-const postSuggestions = [];
+  // ⬇️⬇️⬇️ PUT CODE HERE ⬇️⬇️⬇️
 
-results.forEach((item) => {
-  // TAG MATCHES
-  if (Array.isArray(item.tags)) {
-    item.tags.forEach((tagObj) => {
-  const tag =
-    typeof tagObj === "string"
-      ? tagObj
-      : tagObj.name || tagObj.tag || "";
-
-  if (
-    tag &&
-    tag.toLowerCase().includes(normalizedQuery) &&
-    !tagSuggestions.includes(tag)
-  ) {
-    tagSuggestions.push(tag);
-  }
-});
-
-  }
-
-  // TITLE MATCH
-  if (item.title?.toLowerCase().includes(normalizedQuery)) {
-    postSuggestions.push({
-      type: "title",
-      item,
-    });
-  }
-  // CONTENT MATCH
-  else if (item.content?.toLowerCase().includes(normalizedQuery)) {
-    postSuggestions.push({
-      type: "content",
-      item,
-    });
-  }
-});
-
-// FINAL SUGGESTION LIST (MAX 12)
-const suggestions = [
-  ...tagSuggestions.slice(0, 5).map((tag) => ({
-    type: "tag",
-    value: tag,
-  })),
-  ...postSuggestions.slice(0, 7),
-];
 
 
 
@@ -248,132 +158,47 @@ const suggestions = [
               }}
               className={`hidden md:flex ${getNavClass("/notifications")}`}
             >
-              <MdNotificationsActive  icon={faBell} className="h-4 w-4 mb-0.5" />
+              <MdNotificationsActive icon={faBell} className="h-4 w-4 mb-0.5" />
               Notifications
             </button>
           </nav>
 
           {/* SEARCH */}
-<div className="flex-1 flex items-center">
-  <div className="w-full max-w-md ml-0 mr-2 relative">
+          <div className="flex-1 search-container relative max-w-md">
+            <div
+              className={`flex items-center gap-2 rounded px-3 py-1.5 ${isDark ? "bg-neutral-800" : "bg-neutral-200"
+                }`}
+            >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                onFocus={() => setIsSearchFocused(true)}
+                placeholder="Search posts..."
+                className="bg-transparent outline-none w-full text-xs"
+              />
 
-    {/* SEARCH BAR */}
-    <div
-      className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm ${
-        isDark
-          ? "bg-neutral-800 text-neutral-200"
-          : "bg-neutral-200 text-neutral-900"
-      }`}
-    >
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={handleSearchKeyDown}
-        placeholder="Search posts..."
-        className="bg-transparent outline-none w-full text-xs pr-10"
-      />
+              {searchQuery && (
+                <>
+                  <button onClick={triggerSearch}>
+                    <FaSearch size={12} />
+                  </button>
+                  <button onClick={clearSearch}>
+                    <FaTimes size={12} />
+                  </button>
+                </>
+              )}
+            </div>
 
-      {/* ICONS (RIGHT SIDE) */}
-      {searchQuery.length > 0 && (
-        <div className="flex items-center gap-2">
-          <button
-        onClick={triggerSearch}
-        className="text-neutral-400 hover:text-red-400"
-        title="Search"
-      >
-        <FaSearch size={12} />
-      </button>
-          <button
-        onClick={clearSearch}
-        className="text-neutral-400 hover:text-red-400"
-        title="Clear"
-      >
-        <FaTimes size={12} />
-      </button>
-        </div>
-      )}
-    </div>
-
-    {/* DROPDOWN (WIDTH = SEARCH BAR) */}
-    {showSuggestions && (
-      <div
-        className={`absolute left-0 top-full mt-1 w-full rounded-lg shadow-lg z-50 border ${
-          isDark
-            ? "bg-neutral-800 border-neutral-700"
-            : "bg-white border-neutral-200"
-        }`}
-      >
-        {loading && (
-          <div className="p-3 text-xs text-neutral-400">
-            Searching...
           </div>
-        )}
-
-        {!loading && results.length === 0 && (
-          <div className="p-3 text-xs text-neutral-400">
-            No results found
-          </div>
-        )}
-
-        {!loading &&
-  suggestions.map((s, index) => {
-    // TAG SUGGESTION
-    if (s.type === "tag") {
-      return (
-        <button
-          key={`tag-${index}`}
-          onClick={() => {
-            setShowSuggestions(false);
-            const next = new URLSearchParams(searchParams);
-            next.set("search", s.value);
-            setSearchParams(next);
-          }}
-          className="w-full text-left px-4 py-2 text-xs hover:bg-neutral-700/20"
-        >
-          <p className="font-medium ">
-            Tag : {s.value}
-          </p>
-        </button>
-      );
-    }
-
-    // POST SUGGESTION
-    return (
-      <button
-        key={s.item.id}
-        onClick={() => {
-          setShowSuggestions(false);
-          const next = new URLSearchParams(searchParams);
-          next.set("search", s.item.title);
-          setSearchParams(next);
-        }}
-        className="w-full text-left px-4 py-2 text-xs hover:bg-neutral-700/20"
-      >
-        <p className="font-medium truncate">
-          Title : {s.item.title}
-        </p>
-
-        {s.type === "content" && (
-          <p className="text-[10px] text-neutral-400">
-            Matched in content
-          </p>
-        )}
-      </button>
-    );
-  })}
-
-      </div>
-    )}
-  </div>
-</div>
 
 
           {/* RIGHT SECTION */}
           <div className="flex items-center gap-3 text-xs">
             {/* Try Q-KICS */}
-            <button className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-red-500 text-white hover:bg-red-600 font-semibold" 
-            onClick={() => navigate("/subscription")}>
+            <button className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-red-500 text-white hover:bg-red-600 font-semibold"
+              onClick={() => navigate("/subscription")}>
               Try Q-KICS +
             </button>
 
@@ -468,7 +293,7 @@ const suggestions = [
                         navigate("/subscription");
                       }}
                     >
-                      <FaCrown  /> Try Q-KICS +
+                      <FaCrown /> Try Q-KICS +
                     </button>
 
                     <button
@@ -478,7 +303,7 @@ const suggestions = [
                         navigate("/my-bookings");
                       }}
                     >
-                      <FaAddressBook   /> Bookings
+                      <FaAddressBook /> Bookings
                     </button>
 
                     <button
@@ -488,7 +313,7 @@ const suggestions = [
                         navigate("/subscription");
                       }}
                     >
-                      <IoChatboxEllipses  /> Chats
+                      <IoChatboxEllipses /> Chats
                     </button>
 
                     <button
@@ -498,7 +323,7 @@ const suggestions = [
                         navigate("/notifications");
                       }}
                     >
-                      <MdNotificationsActive  /> Notifications
+                      <MdNotificationsActive /> Notifications
                     </button>
 
                     <button
@@ -515,7 +340,7 @@ const suggestions = [
               </div>
             )}
 
-            
+
           </div>
         </div>
       </header>

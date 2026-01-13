@@ -1,4 +1,4 @@
-// src/profiles/expert/expert_details_components/expertDetails.jsx
+import { useSelector } from "react-redux";
 
 export default function ExpertDetails({
   expertData,
@@ -6,25 +6,27 @@ export default function ExpertDetails({
   editExp,
   setEditExp,
   handleSaveExpert,
-  isDark,
-  readOnly = false,
 }) {
+  const { theme, data: loggedUser } = useSelector((state) => state.user);
+  const activeProfile = useSelector((state) => state.user.activeProfileData);
+  const isDark = theme === "dark";
+
+  const isOwnProfile = loggedUser?.username === (activeProfile?.profile?.user?.username || activeProfile?.profile?.username);
+  const readOnly = !isOwnProfile;
   const inputClass = (enabled) =>
-    `w-full mt-1 px-3 py-2 rounded border ${
-      isDark
-        ? enabled
-          ? "bg-neutral-700 border-green-400 text-white"
-          : "bg-neutral-800 border-neutral-700 text-white opacity-60"
-        : enabled
+    `w-full mt-1 px-3 py-2 rounded border ${isDark
+      ? enabled
+        ? "bg-neutral-700 border-green-400 text-white"
+        : "bg-neutral-800 border-neutral-700 text-white opacity-60"
+      : enabled
         ? "bg-white border-green-400"
         : "bg-neutral-100 border-neutral-300 opacity-60"
     }`;
 
   return (
     <div
-      className={`p-6 rounded-xl shadow ${
-        isDark ? "bg-neutral-900 text-white" : "bg-white"
-      }`}
+      className={`p-6 rounded-xl shadow ${isDark ? "bg-neutral-900 text-white" : "bg-white"
+        }`}
     >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Expert Details</h2>

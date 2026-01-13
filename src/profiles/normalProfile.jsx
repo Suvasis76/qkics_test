@@ -15,7 +15,11 @@ import { useConfirm } from "../context/ConfirmContext";
 
 // Redux
 import { loadUserPosts, removePost } from "../redux/slices/postsSlice";
-import { fetchUserProfile } from "../redux/slices/userSlice";
+import {
+  fetchUserProfile,
+  setActiveProfileData,
+  clearActiveProfileData,
+} from "../redux/slices/userSlice";
 
 
 // UI Components
@@ -24,11 +28,11 @@ import UserPosts from "../profiles/basicDetails/userPosts";
 import ModalOverlay from "../components/ui/ModalOverlay";
 
 export default function NormalProfile({
-  theme,
-  profile,
   readOnly = false,
   disableSelfFetch = false,
 }) {
+  const { theme, activeProfileData } = useSelector((state) => state.user);
+  const profile = activeProfileData?.profile;
 
   const isDark = theme === "dark";
   const { showAlert } = useAlert();
@@ -75,19 +79,6 @@ export default function NormalProfile({
     phone: "",
   });
 
-
-
-  /* -------------------------------
-      POSTS STATE (LOCAL)
-      We sync Redux → Local for UserPosts
-  ------------------------------- */
-  const postsState = useSelector((state) => state.posts.items);
-
-  const [posts, setPosts] = useState([]);
-
-  const [showCreatePost, setShowCreatePost] = useState(false);
-  const [editingPost, setEditingPost] = useState(null);
-  const [showLogin, setShowLogin] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
 
@@ -103,6 +94,7 @@ export default function NormalProfile({
         const user = userRes.data;
 
         setProfileUser(user);
+        dispatch(setActiveProfileData({ role: "normal", profile: user }));
 
         setEditData({
           first_name: user.first_name || "",
@@ -121,6 +113,12 @@ export default function NormalProfile({
     };
 
     loadProfile();
+
+    return () => {
+      if (!disableSelfFetch) {
+        dispatch(clearActiveProfileData());
+      }
+    };
   }, [disableSelfFetch, dispatch]);
 
 
@@ -128,9 +126,7 @@ export default function NormalProfile({
   /* -------------------------------
       When Redux posts load → sync locally
   ------------------------------- */
-  useEffect(() => {
-    setPosts(postsState);
-  }, [postsState]);
+  // Removed local posts sync as UserPosts now uses Redux directly
 
   /* -------------------------------
       SAVE USER INFO
@@ -144,6 +140,9 @@ export default function NormalProfile({
       });
 
       setProfileUser(res.data.user);
+
+      // ✅ SYNC ACTIVE PROFILE DATA
+      dispatch(setActiveProfileData({ role: "normal", profile: res.data.user }));
 
       setEditData({
         first_name: res.data.user.first_name || "",
@@ -182,6 +181,9 @@ export default function NormalProfile({
       setProfileUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
+      // ✅ SYNC ACTIVE PROFILE DATA
+      dispatch(setActiveProfileData({ role: "normal", profile: updatedUser }));
+
       dispatch(fetchUserProfile());
 
       showAlert("Profile picture updated!", "success");
@@ -192,26 +194,7 @@ export default function NormalProfile({
   };
 
 
-  const handleDelete = async (postId) => {
-    showConfirm({
-      title: "Delete Post?",
-      message: "Are you sure you want to delete this post? This cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      type: "danger",
-
-      onConfirm: async () => {
-        try {
-          await axiosSecure.delete(`/v1/community/posts/${postId}/`);
-          dispatch(removePost(postId)); // remove from redux
-          showAlert("Post deleted successfully!", "success");
-        } catch (err) {
-          console.log(err);
-          showAlert("Delete failed!", "error");
-        }
-      },
-    });
-  };
+  // Delete logic moved to UserPosts component
 
 
   // Restore tab + scroll IF coming back from comments
@@ -280,9 +263,9 @@ export default function NormalProfile({
               />
             ) : (
               <div className="w-28 h-28 bg-red-600 text-white rounded-full flex items-center justify-center text-5xl font-bold mx-auto">
-                {profileUser.first_name
+                {profileUser?.first_name
                   ? profileUser.first_name.charAt(0).toUpperCase()
-                  : profileUser.username.charAt(0).toUpperCase()}
+                  : profileUser?.username?.charAt(0).toUpperCase()}
               </div>
             )}
 
@@ -305,7 +288,7 @@ export default function NormalProfile({
                 border transition-all
             
                 border-blue-400 bg-blue-400/10 text-blue-500
-                dark:border-blue-500 dark:bg-blue-500/20 dark:text-blue-300">@{profileUser.username}</span> &nbsp;— &nbsp; <span
+                dark:border-blue-500 dark:bg-blue-500/20 dark:text-blue-300">@{profileUser?.username}</span> &nbsp;— &nbsp; <span
                 className="
                 inline-flex items-center px-2 py-1 rounded-xl text-xs font-medium
                 border transition-all
@@ -351,32 +334,17 @@ export default function NormalProfile({
         <div className="mt-6">
           {activeTab === "details" && (
             <UserDetails
-              user={profileUser}
               editMode={!readOnly && editMode}
               setEditMode={readOnly ? () => { } : setEditMode}
               editData={editData}
               setEditData={readOnly ? () => { } : setEditData}
               handleSave={handleSaveUser}
-              isDark={isDark}
-              readOnly={readOnly}
             />
 
           )}
 
           {activeTab === "posts" && (
-            <UserPosts
-              posts={Array.isArray(posts) ? posts : []}
-              setPosts={setPosts}
-              isDark={isDark}
-              openCreate={showCreatePost}
-              setOpenCreate={setShowCreatePost}
-              editingPost={editingPost}
-              setEditingPost={setEditingPost}
-              setShowLogin={setShowLogin}
-              profileUser={profileUser}
-              handleDelete={handleDelete}
-              readOnly={readOnly}
-            />
+            <UserPosts />
           )}
         </div>
       </div>
