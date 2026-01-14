@@ -1,10 +1,24 @@
 import { useState } from "react";
 import AdminNavbar from "./adminComponents/AdminNavbar";
 import AdminSidebar from "./adminComponents/AdminSidebar";
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
 
-export default function AdminLayout({ theme, role, onToggleTheme }) {
+export default function AdminLayout({ user, status, theme, role, onToggleTheme }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // 1. WHILE LOADING or IDLE - Don't show anything or redirect
+  if (status === "loading" || status === "idle") {
+    return (
+      <div className={`h-screen w-screen flex items-center justify-center ${theme === "dark" ? "bg-neutral-950 text-white" : "bg-white text-black"}`}>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // 2. AFTER LOADING - REDIRECT IF NOT ADMIN
+  if (!user || (user.user_type !== "admin" && user.user_type !== "superadmin")) {
+    return <Navigate to="/" />;
+  }
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 

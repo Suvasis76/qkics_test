@@ -138,7 +138,7 @@ export default function AdminDocuments({ theme }) {
                   }`}>
                 <th className="py-3 px-3 text-left">Title</th>
                 <th className="py-3 px-3 text-left">Description</th>
-                <th className="py-3 px-3 text-left">File</th>
+                {/* <th className="py-3 px-3 text-left">File</th> */}
                 <th className="py-3 px-3 text-center">Access</th>
                 <th className="py-3 px-3 text-center">Active</th>
                 <th className="py-3 px-3 text-center">Actions</th>
@@ -157,7 +157,7 @@ export default function AdminDocuments({ theme }) {
                 >
                   <td className="py-3 px-3 font-medium">{doc.title}</td>
                   <td className="py-3 px-3 max-w-xs truncate">{doc.description}</td>
-                  <td className="py-3 px-3">
+                  {/* <td className="py-3 px-3">
                     <button
   onClick={() => handleDownload(doc)}
   className="text-blue-500"
@@ -168,7 +168,7 @@ export default function AdminDocuments({ theme }) {
 
 
 
-                  </td>
+                  </td> */}
                   <td className="py-3 px-3 text-center">{doc.access_type}</td>
                   <td className="py-3 px-3 text-center">
                     {doc.is_active ? "Active" : "Inactive"}

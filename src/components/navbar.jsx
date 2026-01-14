@@ -9,7 +9,7 @@ import { IoChatboxEllipses } from "react-icons/io5";
 import { MdNotificationsActive } from "react-icons/md";
 import { FaAddressBook } from "react-icons/fa";
 import { FaSearch, FaTimes } from "react-icons/fa";
-
+import { FaFileAlt } from "react-icons/fa";
 
 import LoginModal from "./auth/Login";
 import SignupModal from "./auth/Signup";
@@ -164,6 +164,20 @@ function Navbar({ theme, onToggleTheme, user }) {
             >
               <MdNotificationsActive icon={faBell} className="h-4 w-4 mb-0.5" />
               Notifications
+            </button>
+
+            <button
+              onClick={() => {
+                if (!isLoggedIn) {
+                  setShowLogin(true);
+                } else {
+                  navigate("/document");
+                }
+              }}
+              className={getNavClass("/document")}
+            >
+              <FaFileAlt className="h-4 w-4 mb-0.5" />
+              Documents
             </button>
           </nav>
 

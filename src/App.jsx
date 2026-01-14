@@ -1,6 +1,5 @@
-// src/App.jsx
 import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useAlert } from "./context/AlertContext";
 
@@ -11,6 +10,7 @@ import Home from "./pages/home";
 import Booking from "./pages/booking";
 import Space from "./pages/space";
 import Notification from "./pages/notification";
+import DocumentsPage from "./pages/DocumentsPage";
 import Logout from "./components/auth/logout";
 import NormalProfile from "./profiles/normalProfile";
 import EntrepreneurProfile from "./profiles/entrepreneur";
@@ -83,15 +83,19 @@ function App() {
     }
   }, [showAlert]);
 
+  const location = useLocation();
+
   const shouldShowNavbar = () => {
-    // hide while we are fetching profile initially
-    if (status === "loading") return false;
+    // hide while we are fetching profile initially or if status is idle
+    if (status === "loading" || status === "idle") return false;
+
+    // hide for ANY admin/superadmin paths
+    if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/superadmin") || location.pathname.startsWith("/system-logs") || location.pathname.startsWith("/subscriptions")) {
+      return false;
+    }
 
     // after loading: if no user -> show navbar (public / logged out)
     if (!user) return true;
-
-    // hide for admin / superadmin
-    if (user.user_type === "admin" || user.user_type === "superadmin") return false;
 
     // show for everyone else
     return true;
@@ -124,6 +128,7 @@ function App() {
         <Route path="/booking" element={<Booking />} />
         <Route path="/spaces" element={<Space />} />
         <Route path="/notifications" element={<Notification />} />
+        <Route path="/document" element={<DocumentsPage />} />
         <Route path="/normal" element={<NormalProfile />} />
         <Route path="/entrepreneur" element={<EntrepreneurProfile />} />
         <Route path="/upgrade/expert" element={<ExpertWizard />} />
@@ -147,7 +152,7 @@ function App() {
         <Route path="/logout" element={<Logout />} />
 
         {/* admin and superadmin routes  */}
-        <Route element={<AdminLayout theme={theme} role={user?.user_type} onToggleTheme={toggleTheme} />}>
+        <Route element={<AdminLayout user={user} status={status} theme={theme} role={user?.user_type} onToggleTheme={toggleTheme} />}>
           <Route path="/admin" element={<AdminDashboard theme={theme} />} />
           <Route path="/superadmin" element={<AdminDashboard theme={theme} />} />
           <Route path="/admin-tags" element={<AdminTags theme={theme} />} />
