@@ -41,10 +41,10 @@ export default function useFeed(_, searchQuery) {
       const cleanQuery = searchQuery.replace(/-/g, " ");
 
       // ✅ FIXED: use correct prefix for login/logout
-      const prefix = token ? "/v1" : "/api/v1";
+      const prefix = token ? "/v1" : `${import.meta.env.VITE_API_URL}/api/v1`;
       url = `${prefix}/community/search/?q=${cleanQuery}`;
     } else {
-      const prefix = token ? "/v1" : "/api/v1";
+      const prefix = token ? "/v1" : `${import.meta.env.VITE_API_URL}/api/v1`;
       url = `${prefix}/community/posts/`;
     }
 

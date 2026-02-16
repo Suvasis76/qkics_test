@@ -31,7 +31,7 @@ export default function useSearchPosts() {
 
       const token = getAccessToken();
       const client = token ? axiosSecure : axios;
-      const prefix = token ? "/v1" : "/api/v1";
+      const prefix = token ? "/v1" : `${import.meta.env.VITE_API_URL}/api/v1`;
 
       const res = await client.get(
         `${prefix}/community/search/?q=${encodeURIComponent(

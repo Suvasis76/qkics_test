@@ -50,7 +50,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
     setUsernameErr("");
 
     try {
-      const res = await axios.post(`${API_BASE_URL}v1/auth/check-username/`, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/auth/check-username/`, {
         username: value,
       });
 
@@ -74,7 +74,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
     }
 
     try {
-      const res = await axios.post(`${API_BASE_URL}v1/auth/check-email/`, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/auth/check-email/`, {
         email: value,
       });
 
@@ -98,7 +98,7 @@ function SignupModal({ onClose, openLogin, isDark }) {
 
     try {
       if (value.length === 10) {
-        const res = await axios.post(`${API_BASE_URL}v1/auth/check-phone/`, {
+        const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/auth/check-phone/`, {
           phone: value,
         });
 
