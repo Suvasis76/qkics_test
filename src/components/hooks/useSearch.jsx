@@ -1,9 +1,9 @@
-// src/hooks/useSearchPosts.js
+// src/hooks/useSearch.jsx
 import { useState, useRef, useCallback } from "react";
 import axios from "axios";
 import axiosSecure from "../utils/axiosSecure";
 import { getAccessToken } from "../../redux/store/tokenManager";
-import { API_BASE_URL } from "../../config/api";
+import { normalizePost } from "../utils/normalizePost";
 
 export default function useSearchPosts() {
   const [loading, setLoading] = useState(false);
@@ -12,7 +12,7 @@ export default function useSearchPosts() {
   const controllerRef = useRef(null);
 
   const searchPosts = useCallback(async (query) => {
-    // ✅ Minimum 3 characters
+    // Minimum 3 characters
     if (!query || query.trim().length < 3) {
       setResults([]);
       return;
@@ -26,7 +26,6 @@ export default function useSearchPosts() {
       if (controllerRef.current) {
         controllerRef.current.abort();
       }
-
       controllerRef.current = new AbortController();
 
       const token = getAccessToken();
@@ -34,22 +33,12 @@ export default function useSearchPosts() {
       const prefix = token ? "/v1" : `${import.meta.env.VITE_API_URL}/api/v1`;
 
       const res = await client.get(
-        `${prefix}/community/search/?q=${encodeURIComponent(
-          query
-        )}&limit=5`,
+        `${prefix}/community/search/?q=${encodeURIComponent(query)}&limit=5`,
         { signal: controllerRef.current.signal }
       );
 
-      const normalize = (p) => ({
-        ...p,
-        is_liked:
-          p.is_liked === true || p.is_liked === "true" || p.is_liked === 1,
-        total_likes: Number(p.total_likes || 0),
-        tags: Array.isArray(p.tags) ? p.tags : [],
-      });
-
       const data = res.data?.results || res.data || [];
-      setResults(data.map(normalize));
+      setResults(data.map(normalizePost));
     } catch (err) {
       if (err.name !== "CanceledError") {
         setError("Search failed");

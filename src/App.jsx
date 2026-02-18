@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useAlert } from "./context/AlertContext";
@@ -6,47 +6,57 @@ import { useAlert } from "./context/AlertContext";
 import { fetchUserProfile, setTheme } from "./redux/slices/userSlice";
 
 import Navbar from "./components/navbar";
-import Home from "./pages/home";
-import Booking from "./pages/booking";
-import Space from "./pages/space";
-import Notification from "./pages/notification";
-import DocumentsPage from "./pages/DocumentsPage";
-import Logout from "./components/auth/logout";
-import NormalProfile from "./profiles/normalProfile";
-import EntrepreneurProfile from "./profiles/entrepreneur";
-import ExpertProfile from "./profiles/expertProfile";
-import Comments from "./components/posts/comment";
-import ExpertWizard from "./profiles/expertWizards/ExpertWizard";
-// Line 20 in src/App.jsx
-import EntrepreneurWizard from "./profiles/entreprenuerWizard/entreprenuerWizard.jsx";
 
-import AdminDashboard from "./admin/adminPages/adminDashboard";
-import AdminUsers from "./admin/adminPages/adminUsers";
-import AdminPosts from "./admin/adminPages/adminPosts";
-import SystemLogs from "./admin/superadminPages/systemLogs";
-import AdminLayout from "./admin/adminLayout";
-import AdminSubscriptions from "./admin/adminPages/adminSubscriptions";
-import AdminTags from "./admin/adminPages/adminTags";
-import AdminDocuments from "./admin/adminPages/adminDocuments";
+// ─── Lazy-loaded pages ────────────────────────────────────────────────────────
+const Home               = lazy(() => import("./pages/home"));
+const Booking            = lazy(() => import("./pages/booking"));
+const Space              = lazy(() => import("./pages/space"));
+const Notification       = lazy(() => import("./pages/notification"));
+const DocumentsPage      = lazy(() => import("./pages/DocumentsPage"));
+const SearchResultsPage  = lazy(() => import("./pages/SearchResultsPage"));
 
-import ProfileFetcher from "./profiles/ProfileFetcher";
-import ExpertSlots from "./profiles/expertSlots/ExpertSlots";
-import BookSession from "./components/profileFetch/expertBooking/BookSession";
-import InvestorProfile from "./profiles/investorProfile";
-import Error from "./error";
-import PaymentPage from "./payment";
-import Subscription from "./components/subscription/Subscription";
-import MyBookings from "./components/myBookings/MyBookings";
-import SearchResultsPage from "./pages/SearchResultsPage";
-import ChatPage from "./chat";
+const Logout             = lazy(() => import("./components/auth/logout"));
+const Comments           = lazy(() => import("./components/posts/comment"));
+const Subscription       = lazy(() => import("./components/subscription/Subscription"));
+const MyBookings         = lazy(() => import("./components/myBookings/MyBookings"));
+const BookSession        = lazy(() => import("./components/profileFetch/expertBooking/BookSession"));
+
+const NormalProfile      = lazy(() => import("./profiles/normalProfile"));
+const EntrepreneurProfile= lazy(() => import("./profiles/entrepreneur"));
+const ExpertProfile      = lazy(() => import("./profiles/expertProfile"));
+const InvestorProfile    = lazy(() => import("./profiles/investorProfile"));
+const ProfileFetcher     = lazy(() => import("./profiles/ProfileFetcher"));
+const ExpertSlots        = lazy(() => import("./profiles/expertSlots/ExpertSlots"));
+const ExpertWizard       = lazy(() => import("./profiles/expertWizards/ExpertWizard"));
+const EntrepreneurWizard = lazy(() => import("./profiles/entreprenuerWizard/entreprenuerWizard"));
+
+const PaymentPage        = lazy(() => import("./payment"));
+const ChatPage           = lazy(() => import("./chat"));
+const Error              = lazy(() => import("./error"));
+
+// ─── Admin (separate chunk — never downloaded by regular users) ───────────────
+const AdminLayout        = lazy(() => import("./admin/adminLayout"));
+const AdminDashboard     = lazy(() => import("./admin/adminPages/adminDashboard"));
+const AdminUsers         = lazy(() => import("./admin/adminPages/adminUsers"));
+const AdminPosts         = lazy(() => import("./admin/adminPages/adminPosts"));
+const AdminTags          = lazy(() => import("./admin/adminPages/adminTags"));
+const AdminSubscriptions = lazy(() => import("./admin/adminPages/adminSubscriptions"));
+const AdminDocuments     = lazy(() => import("./admin/adminPages/adminDocuments"));
+const SystemLogs         = lazy(() => import("./admin/superadminPages/systemLogs"));
+
+// ─── Simple full-screen loader shown while chunks download ───────────────────
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-red-500 border-neutral-800" />
+    </div>
+  );
+}
 
 function App() {
   const dispatch = useDispatch();
   const { showAlert } = useAlert();
 
-  /* -----------------------------------------
-      FETCH USER PROFILE ONCE (Redux)
-  ----------------------------------------- */
   const { data: user, status, theme } = useSelector((state) => state.user);
 
   useEffect(() => {
@@ -66,19 +76,13 @@ function App() {
     }
   }, [theme]);
 
-  const toggleTheme = () => dispatch(setTheme(theme === "dark" ? "light" : "dark"));
+  const toggleTheme = () =>
+    dispatch(setTheme(theme === "dark" ? "light" : "dark"));
 
-  /* -----------------------------------------
-      SEARCH STATE
-  ----------------------------------------- */
   const [searchText, setSearchText] = useState("");
 
-  /* -----------------------------------------
-      ALERT AFTER LOGIN
-  ----------------------------------------- */
   useEffect(() => {
     const alertMessage = localStorage.getItem("pendingAlert");
-
     if (alertMessage) {
       showAlert(alertMessage, "success");
       localStorage.removeItem("pendingAlert");
@@ -88,87 +92,78 @@ function App() {
   const location = useLocation();
 
   const shouldShowNavbar = () => {
-    // hide while we are fetching profile initially or if status is idle
     if (status === "loading" || status === "idle") return false;
-
-    // hide for ANY admin/superadmin paths
-    if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/superadmin") || location.pathname.startsWith("/system-logs") || location.pathname.startsWith("/subscriptions")) {
-      return false;
-    }
-
-    // after loading: if no user -> show navbar (public / logged out)
-    if (!user) return true;
-
-    // show for everyone else
+    if (
+      location.pathname.startsWith("/admin") ||
+      location.pathname.startsWith("/superadmin") ||
+      location.pathname.startsWith("/system-logs") ||
+      location.pathname.startsWith("/subscriptions")
+    ) return false;
     return true;
   };
 
-  /* -----------------------------------------
-      RETURN UI
-  ----------------------------------------- */
   return (
     <>
-      {/* HIDE NAVBAR FOR ADMIN ROUTES */}
       {shouldShowNavbar() && (
-        <>
-          <Navbar
-            theme={theme}
-            onToggleTheme={toggleTheme}
-            user={user}
-            onSearch={(text) => setSearchText(text)}
-          />
-        </>
+        <Navbar
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          user={user}
+          onSearch={(text) => setSearchText(text)}
+        />
       )}
 
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/"                       element={<Home />} />
+          <Route path="/booking"                element={<Booking />} />
+          <Route path="/spaces"                 element={<Space />} />
+          <Route path="/notifications"          element={<Notification />} />
+          <Route path="/document"               element={<DocumentsPage />} />
+          <Route path="/search"                 element={<SearchResultsPage />} />
 
-      <Routes>
-        <Route
-          path="/"
-          element={<Home />}
-        />
+          <Route path="/normal"                 element={<NormalProfile />} />
+          <Route path="/entrepreneur"           element={<EntrepreneurProfile />} />
+          <Route path="/expert"                 element={<ExpertProfile />} />
+          <Route path="/investor"               element={<InvestorProfile />} />
+          <Route path="/profile/:username"      element={<ProfileFetcher />} />
 
-        <Route path="/booking" element={<Booking />} />
-        <Route path="/spaces" element={<Space />} />
-        <Route path="/notifications" element={<Notification />} />
-        <Route path="/document" element={<DocumentsPage />} />
-        <Route path="/normal" element={<NormalProfile />} />
-        <Route path="/entrepreneur" element={<EntrepreneurProfile />} />
-        <Route path="/upgrade/expert" element={<ExpertWizard />} />
-        <Route path="/expert" element={<ExpertProfile />} />
-        {/* Booking */}
-        <Route path="/expert/slots" element={<ExpertSlots />} />
-        <Route path="/book-session/:expertUuid" element={<BookSession />} />
+          <Route path="/upgrade/expert"         element={<ExpertWizard />} />
+          <Route path="/upgrade/entrepreneur"   element={<EntrepreneurWizard />} />
 
-        <Route path="/upgrade/entrepreneur" element={<EntrepreneurWizard />} />
+          <Route path="/expert/slots"           element={<ExpertSlots />} />
+          <Route path="/book-session/:expertUuid" element={<BookSession />} />
 
-        <Route path="/investor" element={<InvestorProfile />} />
+          <Route path="/subscription"           element={<Subscription />} />
+          <Route path="/my-bookings"            element={<MyBookings />} />
+          <Route path="/payment"                element={<PaymentPage />} />
+          <Route path="/chat/:roomId?"          element={<ChatPage />} />
+          <Route path="/post/:id/comments"      element={<Comments />} />
+          <Route path="/logout"                 element={<Logout />} />
 
-        <Route path="/profile/:username" element={<ProfileFetcher />} />
-        <Route path="/subscription" element={<Subscription />} />
-        <Route path="/my-bookings" element={<MyBookings />} />
-        <Route path="/payment" element={<PaymentPage />} />
-        <Route path="/search" element={<SearchResultsPage />} />
-        <Route path="/chat/:roomId?" element={<ChatPage />} />
+          {/* Admin routes — downloaded only when an admin visits */}
+          <Route element={
+            <AdminLayout
+              user={user}
+              status={status}
+              theme={theme}
+              role={user?.user_type}
+              onToggleTheme={toggleTheme}
+            />
+          }>
+            <Route path="/admin"            element={<AdminDashboard theme={theme} />} />
+            <Route path="/superadmin"       element={<AdminDashboard theme={theme} />} />
+            <Route path="/admin-tags"       element={<AdminTags theme={theme} />} />
+            <Route path="/admin-users"      element={<AdminUsers theme={theme} />} />
+            <Route path="/admin-posts"      element={<AdminPosts theme={theme} />} />
+            <Route path="/system-logs"      element={<SystemLogs theme={theme} />} />
+            <Route path="/subscriptions"    element={<AdminSubscriptions theme={theme} />} />
+            <Route path="/admin-documents"  element={<AdminDocuments theme={theme} />} />
+          </Route>
 
-
-        <Route path="/post/:id/comments" element={<Comments />} />
-        <Route path="/logout" element={<Logout />} />
-
-        {/* admin and superadmin routes  */}
-        <Route element={<AdminLayout user={user} status={status} theme={theme} role={user?.user_type} onToggleTheme={toggleTheme} />}>
-          <Route path="/admin" element={<AdminDashboard theme={theme} />} />
-          <Route path="/superadmin" element={<AdminDashboard theme={theme} />} />
-          <Route path="/admin-tags" element={<AdminTags theme={theme} />} />
-          <Route path="/admin-users" element={<AdminUsers theme={theme} />} />
-          <Route path="/admin-posts" element={<AdminPosts theme={theme} />} />
-          <Route path="/system-logs" element={<SystemLogs theme={theme} />} />
-          <Route path="/subscriptions" element={<AdminSubscriptions theme={theme} />} />
-          <Route path="/admin-documents" element={<AdminDocuments theme={theme} />} />
-        </Route>
-
-        {/* 404 Not Found */}
-        <Route path="*" element={<Error />} />
-      </Routes>
+          <Route path="*" element={<Error />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

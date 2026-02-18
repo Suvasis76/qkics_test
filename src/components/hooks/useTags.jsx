@@ -1,29 +1,18 @@
 // src/components/hooks/useTags.jsx
-import { useEffect, useState } from "react";
-import axiosSecure from "../utils/axiosSecure";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTags } from "../../redux/slices/tagsSlice";
 
+// Tags almost never change, so they're stored in Redux and fetched once.
+// Any component calling useTags() after the first will get the cached data
+// instantly with no network request.
 export default function useTags() {
-  const [tags, setTags] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchTags = async () => {
-    try {
-      // FIXED URL + using axiosSecure
-      const res = await axiosSecure.get("/v1/community/tags/");
-    
-
-      setTags(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.log("Tag load error:", err);
-      setTags([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const dispatch = useDispatch();
+  const { items: tags, loading } = useSelector((state) => state.tags);
 
   useEffect(() => {
-    fetchTags();
-  }, []);
+    dispatch(fetchTags());
+  }, [dispatch]);
 
   return { tags, loading };
 }

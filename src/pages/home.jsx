@@ -12,6 +12,7 @@ import useFeed from "../components/hooks/useFeed";
 import useLike from "../components/hooks/useLike";
 import useTags from "../components/hooks/useTags";
 import { getAccessToken } from "../redux/store/tokenManager";
+import { resolveProfileRoute } from "../components/utils/getUserProfileRoute";
 
 import CreatePostModal from "../components/posts/create_post";
 import LoginModal from "../components/auth/login";
@@ -65,23 +66,7 @@ function Home() {
   }, [posts]);
 
   const goToProfile = (author) => {
-    if (!loggedUser) {
-      navigate(`/profile/${author.username}`);
-      return;
-    }
-
-    if (loggedUser.username === author.username) {
-      switch (loggedUser.user_type) {
-        case "expert": navigate("/expert"); break;
-        case "entrepreneur": navigate("/entrepreneur"); break;
-        case "investor": navigate("/investor"); break;
-        case "admin": navigate("/admin"); break;
-        case "superadmin": navigate("/superadmin"); break;
-        default: navigate("/normal");
-      }
-      return;
-    }
-    navigate(`/profile/${author.username}`);
+    navigate(resolveProfileRoute(author, loggedUser));
   };
 
   const handleDelete = (postId) => {

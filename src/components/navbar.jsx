@@ -14,6 +14,7 @@ import CreatePostModal from "./posts/create_post";
 import MobileBottomNav from "./ui/MobileBottomNav";
 import ModalOverlay from "./ui/ModalOverlay";
 import useClickOutside from "./hooks/useClickOutside";
+import { getOwnProfileRoute } from "./utils/getUserProfileRoute";
 
 import {
   faHouse,
@@ -74,12 +75,7 @@ function Navbar({ theme, onToggleTheme, user }) {
   const goToProfile = () => {
     setDropdown(false);
     if (!user) return navigate("/normal");
-    if (user.user_type === "expert") navigate("/expert");
-    else if (user.user_type === "entrepreneur") navigate("/entrepreneur");
-    else if (user.user_type === "investor") navigate("/investor");
-    else if (user.user_type === "admin") navigate("/admin");
-    else if (user.user_type === "superadmin") navigate("/superadmin");
-    else navigate("/normal");
+    navigate(getOwnProfileRoute(user.user_type));
   };
 
   const handleSearchFocus = () => {
@@ -358,5 +354,3 @@ function DropdownItem({ onClick, icon, label, danger, isDark }) {
 }
 
 export default Navbar;
-
-

@@ -3,21 +3,12 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import axiosSecure from "../utils/axiosSecure";
 import { getAccessToken } from "../../redux/store/tokenManager";
+import { normalizePost } from "../utils/normalizePost";
 
 export default function useFeed(_, searchQuery) {
   const [posts, setPosts] = useState([]);
   const [next, setNext] = useState(null);
   const loaderRef = useRef(null);
-
-  const normalize = (p) => ({
-    ...p,
-    is_liked:
-      p.is_liked === true ||
-      p.is_liked === "true" ||
-      p.is_liked === 1,
-    total_likes: Number(p.total_likes || 0),
-    tags: Array.isArray(p.tags) ? p.tags : [],
-  });
 
   const extractResults = (data) => {
     if (Array.isArray(data)) return { results: data, next: null };
@@ -39,8 +30,6 @@ export default function useFeed(_, searchQuery) {
 
     if (searchQuery && searchQuery.trim() !== "") {
       const cleanQuery = searchQuery.replace(/-/g, " ");
-
-      // ✅ FIXED: use correct prefix for login/logout
       const prefix = token ? "/v1" : `${import.meta.env.VITE_API_URL}/api/v1`;
       url = `${prefix}/community/search/?q=${cleanQuery}`;
     } else {
@@ -53,12 +42,9 @@ export default function useFeed(_, searchQuery) {
 
     const res = await client.get(url);
     const parsed = extractResults(res.data);
-    const freshPosts = parsed.results.map(normalize);
-
-    setPosts(freshPosts);
+    setPosts(parsed.results.map(normalizePost));
     setNext(parsed.next);
   };
-
 
   /** -----------------------------
    * INFINITE LOAD MORE
@@ -69,9 +55,8 @@ export default function useFeed(_, searchQuery) {
     const client = getClient();
     const res = await client.get(next);
     const parsed = extractResults(res.data);
-    const newPosts = parsed.results.map(normalize);
 
-    setPosts((prev) => [...prev, ...newPosts]);
+    setPosts((prev) => [...prev, ...parsed.results.map(normalizePost)]);
     setNext(parsed.next);
   };
 
@@ -89,7 +74,6 @@ export default function useFeed(_, searchQuery) {
     );
 
     observer.observe(loaderRef.current);
-
     return () => observer.disconnect();
   }, [next]);
 

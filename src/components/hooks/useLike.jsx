@@ -1,16 +1,9 @@
+// src/components/hooks/useLike.jsx
 import axiosSecure from "../utils/axiosSecure";
 import { getAccessToken } from "../../redux/store/tokenManager";
+import { normalizePost } from "../utils/normalizePost";
 
 export default function useLike(setPosts, tokenGetter, openLoginModal) {
-  const normalize = (data) => ({
-    ...data,
-    is_liked:
-      data.is_liked === true ||
-      data.is_liked === "true" ||
-      data.is_liked === 1,
-    total_likes: Number(data.total_likes || 0),
-  });
-
   const handleLike = async (postId) => {
     const token =
       typeof tokenGetter === "function"
@@ -21,17 +14,17 @@ export default function useLike(setPosts, tokenGetter, openLoginModal) {
 
     try {
       const res = await axiosSecure.post(`/v1/community/posts/${postId}/like/`);
-      const updated = normalize(res.data.data);
+      const updated = normalizePost(res.data.data);
 
-      // ONLY update like state, not entire post object
+      // Only update like state, not the entire post object
       setPosts((prev) =>
         prev.map((post) =>
           post.id === postId
             ? {
-              ...post,
-              is_liked: updated.is_liked,
-              total_likes: updated.total_likes,
-            }
+                ...post,
+                is_liked: updated.is_liked,
+                total_likes: updated.total_likes,
+              }
             : post
         )
       );

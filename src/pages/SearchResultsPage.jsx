@@ -11,6 +11,7 @@ import useLike from "../components/hooks/useLike";
 import { useConfirm } from "../context/ConfirmContext";
 import { useAlert } from "../context/AlertContext";
 import { getAccessToken } from "../redux/store/tokenManager";
+import { resolveProfileRoute } from "../components/utils/getUserProfileRoute";
 import axiosSecure from "../components/utils/axiosSecure";
 
 import PostCard from "../components/posts/PostCard";
@@ -94,23 +95,7 @@ export default function SearchResultsPage() {
     };
 
     const goToProfile = (author) => {
-        if (!loggedUser) {
-            navigate(`/profile/${author.username}`);
-            return;
-        }
-
-        if (loggedUser.username === author.username) {
-            switch (loggedUser.user_type) {
-                case "expert": navigate("/expert"); break;
-                case "entrepreneur": navigate("/entrepreneur"); break;
-                case "investor": navigate("/investor"); break;
-                case "admin": navigate("/admin"); break;
-                case "superadmin": navigate("/superadmin"); break;
-                default: navigate("/normal");
-            }
-            return;
-        }
-        navigate(`/profile/${author.username}`);
+        navigate(resolveProfileRoute(author, loggedUser));
     };
 
     const handleDelete = (postId) => {
